@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Drumul spre Unire</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;500;700;800&family=Cormorant+SC:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+<canvas id="scene" aria-label="Harta Alba Iulia, 30 noiembrie 1918"></canvas>
+
+<div id="hud">
+  <div class="top">
+    <div class="panel brand">
+      <div class="tricolor"></div>
+      <div><div class="eyebrow">Capitolul 6 · Alba Iulia</div><div class="title">Drumul spre Unire</div></div>
+    </div>
+    <div class="panel clock">
+      <div class="eyebrow" id="dayname">Sâmbătă</div>
+      <div class="time" id="clock">30 noiembrie 1918 · 06:00</div>
+      <div class="deadline" id="deadline">Adunarea începe peste 28 h</div>
+    </div>
+    <div class="panel res">
+      <div class="r" title="Provizii: hrană, cărbune, căruțe. Plătesc trenurile și paza.">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M8 4h8l-1.5 3c3 1.5 4.5 4.5 4.5 7.5C19 18.5 16 20 12 20s-7-1.5-7-5.5C5 11.5 6.5 8.5 9.5 7z"/><path d="M9.5 7h5"/></svg>
+        <div><div class="rl">Provizii</div><div class="rv" id="vProv">0</div></div>
+      </div>
+      <div class="r" title="Influență: autoritatea Consiliului Național. Plătește delegațiile și negocierile.">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M6 4h11a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7"/><path d="M6 4a2 2 0 0 0-2 2v1h4V6a2 2 0 0 0-2-2zM8 6v12a2 2 0 0 1-2 2 2 2 0 0 1-2-2"/><path d="M11 9h5M11 12h5M11 15h3"/></svg>
+        <div><div class="rl">Influență</div><div class="rv" id="vInfl">0</div></div>
+      </div>
+      <div class="r" title="Moral: entuziasmul oamenilor. Grăbește coloanele și crește resursele.">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5 21V4"/><path d="M5 5h12l-2 4 2 4H5"/></svg>
+        <div><div class="rl">Moral</div><div class="rv" id="vMoral">0</div><div class="meter"><i id="mMoral"></i></div></div>
+      </div>
+    </div>
+    <div class="panel objective">
+      <div class="obj-row"><span class="eyebrow">Delegați sosiți</span><b id="delCount">0 / 1.228</b></div>
+      <div class="bar"><i id="delBar"></i></div>
+      <div class="obj-row small"><span>Oameni pe Câmpul lui Horea</span><b id="crowdCount">0</b></div>
+    </div>
+    <div class="panel tools">
+      <button class="tool" id="btnSpeed" aria-label="Viteza jocului">×1</button>
+      <button class="tool" id="btnPause" aria-label="Pauză">
+        <svg viewBox="0 0 24 24" fill="currentColor" id="icoPause"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+      </button>
+      <button class="tool" id="btnChron" aria-label="Cronica"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M4 5c3-1 5-1 8 1 3-2 5-2 8-1v14c-3-1-5-1-8 1-3-2-5-2-8-1z"/><path d="M12 6v14"/></svg><span>Cronica</span><span class="dot"></span></button>
+    </div>
+  </div>
+
+  <div class="spacer"></div>
+
+  <div class="bottom">
+    <div class="provs" id="provs" role="group" aria-label="Provincii"></div>
+    <div class="actions">
+      <button class="act" id="aDel">
+        <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="9" r="3.2"/><path d="M5 26v-6a6 6 0 0 1 12 0v6"/><circle cx="22" cy="11" r="2.6"/><path d="M19 26v-5a4.5 4.5 0 0 1 8 0v5"/><path d="M25 4v7"/><path d="M25 4h4.5v3.5H25"/></svg>
+        <span class="an">Trimite delegați</span><span class="ac">12 Influență · căruțe</span>
+      </button>
+      <button class="act" id="aTrain">
+        <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V13h10v9"/><path d="M14 22v-6h12v6"/><path d="M7 13V9h4v4"/><path d="M20 16v-4"/><circle cx="8" cy="24" r="2"/><circle cx="18" cy="24" r="2"/><circle cx="24" cy="24" r="2"/><path d="M3 28h26"/><path d="M8 7c0-2 2-3 4-3"/></svg>
+        <span class="an">Organizează tren</span><span class="ac">45 Provizii · linie liberă</span>
+      </button>
+      <button class="act" id="aGuard">
+        <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M16 4l10 4v7c0 7-5 11-10 13C11 26 6 22 6 15V8z"/><path d="M11 16l4 4 7-8"/></svg>
+        <span class="an">Protejează traseul</span><span class="ac">25 Provizii · 45 s</span>
+      </button>
+      <button class="act" id="aNeg">
+        <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l6-4 5 2 4-2 5 2 6 2"/><path d="M3 12l2 8 4 3"/><path d="M29 12l-3 9-6 4-4-3-4 2-3-3"/><path d="M14 10l-3 4c1 2 3 2 5 0l2-2 5 5"/></svg>
+        <span class="an">Negociază</span><span class="ac">20 Influență</span>
+      </button>
+    </div>
+  </div>
+</div>
+<div id="toasts" aria-live="polite"></div>
+<div id="modal" hidden><div class="card" id="card" role="dialog" aria-modal="true"></div></div>
+<script src="src/game.js"></script>
+</body>
+</html>
