@@ -75,7 +75,7 @@ deliverable; it is not committed unless decided later.
 
 ## Cost
 
-Seedance 2.0, quality tier standard, 720p, audio on. The public docs quote about 30 credits
+Seedance 2.0, quality tier mini (the standard tier needs a paid purchase on the account; switched on 2026-09-29), 720p, audio on. The public docs quote about 30 credits
 for a 5 s clip as an illustrative figure, so two clips of 6 s and 7 s should cost roughly
 70–90 credits. The script prints the real `credits_used` from every submit response. A
 dry run precedes any paid call.
