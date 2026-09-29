@@ -23,7 +23,7 @@
     "resolution": "720p",
     "generate_audio": true,
     "fixed_lens": false,
-    "image_url": "https://raw.githubusercontent.com/luciancramba/drumul-spre-unire/feature/social-trailer/tools/trailer/ref/map-portrait.jpg",
+    "image_url": "https://raw.githubusercontent.com/luciancramba/drumul-spre-unire/main/tools/trailer/ref/map-portrait.jpg",
     "prompt": "Use the supplied image as the exact opening frame: a hand-painted 1918 map of Alba Iulia with a star-shaped fortress in the centre surrounded by snowy fields, roads and a river. Animate it as a living map. Camera: very slow, smooth push-in toward the star fortress, no rotation, no tilt. Along the painted roads, tiny dark figures in long columns flow toward the fortress; on the railway line a small steam locomotive trails white smoke; warm lantern light glows on the field and along the ramparts as if at dusk; faint mist drifts over the rivers. Keep the painted paper texture, the colours and every drawn detail exactly as in the image: no redrawing, no new buildings, no added labels, no text, no logos, no watermarks. Hold the final frame steady for the last two seconds. Sound: a soft distant crowd murmur, one far-away train whistle, quiet wind."
   }
 ]
