@@ -108,3 +108,13 @@ dry run precedes any paid call.
 ## Out of scope
 
 Landscape trailer, real game footage, the in‑game ending cinematic, Seedance 2.5.
+
+## Outcome (2026-09-29)
+
+The Seedance account had no usable credits (standard tier: purchase_required; mini tier:
+insufficient_credits), so the first cut was produced without the API. Shot 2 was generated
+in ChatGPT as image-to-video from `tools/trailer/ref/map-portrait.jpg` (400×736, 6 s,
+upscaled in assembly). Shot 1 is a ChatGPT still (`tools/trailer/ref/shot1-still.webp`)
+animated by `tools/trailer/animate-still.sh` with a slow push-in. Titles are rendered with
+Pillow (`titles.py`) and overlaid, because the Homebrew ffmpeg build lacks `drawtext`.
+The Seedance pipeline (`generate.mjs`) stays in place for when credits are available.
