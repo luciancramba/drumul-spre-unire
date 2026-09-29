@@ -15,6 +15,7 @@ Singura dependență externă sunt fonturile Google (Cormorant SC, Alegreya Sans
 - `assets/map-1918.jpg`: harta pictată cu AI (2240×1494), desenată pe lumea jocului de 1600×1067.
 - `reference/`: harta originală 2K, schița de layout și `artifact-single-file.html` (versiunea cu un singur fișier, cu harta în base64, publicată ca artifact).
 - `tools/make_layout.py` + `tools/map-prompt.md`: cum a fost generată harta.
+- `tools/trailer/`: trailerul social 9:16 generat cu Seedance 2.0 și lipit cu ffmpeg. Vezi `tools/trailer/README.md`.
 
 ## Cum e organizat game.js
 - **Lumea** are 1600×1067 unități, cu nordul în sus. Camera (`cam`) face pan, pinch și zoom cu rotița. `clampCam` permite o margine, ca elementele să poată fi scoase de sub HUD.
