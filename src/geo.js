@@ -94,8 +94,29 @@ const LABELS=[
   {name:'Regatul României',lat:45.05,lon:24.60},
 ];
 
+/* ---------- routes ---------- */
+// town keys from the province to Alba Iulia; the city path in game.js takes over there
+const ROUTES={
+  MM:{road:['baiaMare','somcuta','dej','gherla','cluj','turda','aiud','teius','albaIulia'],
+      rail:['dej','gherla','cluj','campiaTurzii','aiud','teius','albaIulia']},
+  CR:{road:['oradea','beius','vascau','campeni','abrud','zlatna','albaIulia'],
+      rail:['oradea','alesd','ciucea','huedin','cluj','campiaTurzii','aiud','teius','albaIulia']},
+  BN:{road:['timisoara','lugoj','faget','dobra','deva','orastie','vintu','albaIulia'],
+      rail:['timisoara','arad','lipova','savarsin','ilia','deva','simeria','orastie','vintu','albaIulia']},
+  TR:{road:['brasov','fagaras','avrig','sibiu','miercurea','sebes','albaIulia'],
+      rail:['brasov','fagaras','avrig','sibiu','ocnaSibiului','miercurea','sebes','vintu','albaIulia']},
+};
+// same split as PROV[...].rail in game.js: one train per line at a time
+const RAIL_SIDE={MM:'E',CR:'E',BN:'W',TR:'W'};
+const JUNCTIONS={E:'teius',W:'vintu'};
+const pathCache={};
+function routePath(prov,kind){
+  const key=prov+':'+kind;
+  return pathCache[key]||(pathCache[key]=core.mkPath(ROUTES[prov][kind].map(townXY)));
+}
+
 /* ---------- export ---------- */
-const geo={BOUNDS,RW,RH,project,unproject,TOWNS,townXY,RIVERS,BORDER_1918,REGIONS,LABELS};
+const geo={BOUNDS,RW,RH,project,unproject,TOWNS,townXY,RIVERS,BORDER_1918,REGIONS,LABELS,ROUTES,RAIL_SIDE,JUNCTIONS,routePath};
 DSU.geo=geo;
 if(typeof module!=='undefined'&&module.exports)module.exports=geo;
 })(typeof window!=='undefined'?window:globalThis);

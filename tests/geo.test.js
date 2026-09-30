@@ -94,3 +94,41 @@ test('the map names the four regions and the Kingdom of Romania',()=>{
   const names=LABELS.map(l=>l.name);
   for(const n of ['Maramureș','Crișana','Banat','Transilvania','Regatul României'])assert.ok(names.includes(n),n);
 });
+
+const {ROUTES,RAIL_SIDE,JUNCTIONS,routePath}=geo;
+const PROVS=['MM','CR','BN','TR'];
+
+test('every route starts in its province and ends at Alba Iulia',()=>{
+  const start={MM:{road:'baiaMare',rail:'dej'},CR:{road:'oradea',rail:'oradea'},BN:{road:'timisoara',rail:'timisoara'},TR:{road:'brasov',rail:'brasov'}};
+  for(const p of PROVS)for(const kind of ['road','rail']){
+    const r=ROUTES[p][kind];
+    assert.equal(r[0],start[p][kind],`${p} ${kind}`);
+    assert.equal(r[r.length-1],'albaIulia',`${p} ${kind}`);
+    for(const k of r)assert.ok(TOWNS[k],`${p} ${kind}: unknown town ${k}`);
+  }
+});
+
+test('routes have no repeated stops and no jumps across the map',()=>{
+  for(const p of PROVS)for(const kind of ['road','rail']){
+    const path=routePath(p,kind);
+    for(let i=1;i<path.pts.length;i++){
+      const seg=path.L[i]-path.L[i-1];
+      assert.ok(seg>1&&seg<260,`${p} ${kind} segment ${i}: ${seg.toFixed(0)}`);
+    }
+  }
+});
+
+test('trains reach Alba Iulia through the junction of their line',()=>{
+  assert.deepEqual(RAIL_SIDE,{MM:'E',CR:'E',BN:'W',TR:'W'});
+  assert.deepEqual(JUNCTIONS,{E:'teius',W:'vintu'});
+  for(const p of PROVS){
+    const r=ROUTES[p].rail;
+    assert.equal(r[r.length-2],JUNCTIONS[RAIL_SIDE[p]],p);
+  }
+});
+
+test('routePath is projected, cached and ends on Alba Iulia',()=>{
+  const a=routePath('BN','rail');
+  assert.equal(routePath('BN','rail'),a);
+  assert.deepEqual(a.pts[a.pts.length-1],townXY('albaIulia'));
+});
