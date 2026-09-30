@@ -28,7 +28,8 @@ Horea and the cinematic ending stay as they are.
 
 | File | Responsibility | Depends on |
 |------|----------------|------------|
-| `src/geo.js` | Pure data and math, no DOM. Towns (lat/lon), rivers, 1918 railways and roads as lat/lon polylines, approximate outlines of the four historical regions, the 1918 border with the Kingdom of Romania, and `project(lat, lon)` → region world units. Route definitions per province: road and rail polylines ending at the city entry. Region speeds and the located events table. Dual export like `core.js`. | core |
+| `src/geo.js` | Pure data and math, no DOM. Towns (lat/lon), rivers, 1918 railways and roads as lat/lon polylines, approximate outlines of the four historical regions, the 1918 border with the Kingdom of Romania, and `project(lat, lon)` → region world units. Route definitions per province: road and rail polylines ending at Alba Iulia, where the
+city path takes over. Region speeds and the located events table. Dual export like `core.js`. | core |
 | `src/region.js` | `DSU.region`: region world renderer and camera. Static layers are painted once into an off-screen canvas; per frame it draws that canvas, the selected province's routes, guards, block markers and the moving markers. Handles pan and zoom inside the region. | core, geo |
 | `src/portal.js` | `DSU.portal`: which world is active, the transition between them, and the zoom thresholds. Pure state machine (`level`, `progress`, `direction`) plus a draw helper for the crossfade. Owns the „Regiune / Oraș" button state and its attention dot. | core |
 | `src/game.js` | Journeys get two segments: a regional one on `geo` routes, then the existing city path. Hand-off at the city entry. Located events and blocks use regional positions. Input and drawing are routed to the active world. | all |
@@ -72,9 +73,11 @@ Horea and the cinematic ending stay as they are.
   the city spawns today at the start of the city path (a cart plus 24 walkers, or a train
   at `d = 0`). The city code for walking, unloading and settling is not changed.
 - Spontaneous crowds from the nearby villages keep appearing at the city edge.
-- Timing: the whole game still lasts about 4 minutes. At normal speed and 70 moral, a
-  full journey takes at most about 45 s for Maramureș and about 30 s for Transilvania.
-  Regional speeds live in `geo.js` and are covered by a test.
+- Timing: the whole game still lasts about 4 minutes. At normal speed and 70 moral, the
+  regional segment of a road takes 15–30 s and of a railway 10–25 s, proportional to its
+  real length (the four capitals are all 750–1050 region units from Alba Iulia). The city
+  segment adds what it takes today. Regional speeds live in `geo.js` and are covered by a
+  test.
 
 ## 4. Located events
 
@@ -135,8 +138,8 @@ Lucian's approval in chat.
 ## Testing
 
 - Unit (Node): projection order of towns (Cluj north of Alba Iulia, Arad west of Deva,
-  Brașov east of Sibiu); every route is continuous and ends at its city entry; journey
-  times at the configured speeds fall in 30–45 s; each located event lies on the route it
+  Brașov east of Sibiu); every route is continuous and ends at Alba Iulia; regional
+  segment times fall in 15–30 s (roads) and 10–25 s (railways); each located event lies on the route it
   blocks; the portal state machine switches once per crossing and never oscillates inside
   the hysteresis band.
 - Browser: one bot playthrough per PR with no console errors; pinch and wheel back and
