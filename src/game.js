@@ -1,6 +1,6 @@
 (()=>{
 const {W,H,RATE,DEADLINE,QUOTAS,TOTAL,clamp,fmt,mkPath,at,clockParts,clockText,scoreFor}=DSU.core;
-const save=DSU.save;
+const save=DSU.save,audio=DSU.audio;
 const BGS=1.4;
 const $=id=>document.getElementById(id);
 const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -149,7 +149,7 @@ function organizeTrain(){
   S.prov-=45;const n=Math.min(120,remaining(p));S.sent[p]+=n;
   const bonus=S.trainBonus[side]||0;S.trainBonus[side]=0;
   S.trains.push({side,path:side==='W'?P.railW:P.railE,d:0,state:'run',n,people:6500+bonus,prov:p,unload:0,alpha:1,cars:6,smokeT:0});
-  toast(`Tren special cu <b>${n}</b> delegați din ${pr.name} pe ruta ${pr.via}.`);
+  toast(`Tren special cu <b>${n}</b> delegați din ${pr.name} pe ruta ${pr.via}.`);audio.whistle();
   flash('aTrain');
 }
 function protect(){
@@ -214,7 +214,7 @@ function showEvent(ev){
     b.innerHTML=`<span>${ch.t}</span><span class="cost">${costs.join(' · ')}</span>`;
     if(!canPay(ch.cost))b.disabled=true;
     b.onclick=()=>{resolve(ev,ch);closeModal()};box.appendChild(b)});
-  openModal();
+  audio.telegram();openModal();
   setTimeout(()=>box.querySelector('button:not([disabled])')?.focus(),50);
 }
 function resolve(ev,ch){
@@ -257,6 +257,7 @@ function showChronicle(onBack){
 function openModal(){$('modal').hidden=false;modalOpen=true}
 function closeModal(){$('modal').hidden=true;modalOpen=false}
 function toast(html,kind=''){const box=$('toasts');const d=document.createElement('div');d.className='toast '+kind;d.innerHTML=html;box.appendChild(d);
+  if(kind==='good')audio.good();else if(kind==='bad')audio.bad();
   while(box.children.length>3)box.firstChild.remove();setTimeout(()=>d.remove(),kind==='fact'?6000:3800);return d}
 
 /* ---------- update ---------- */
@@ -287,14 +288,14 @@ function update(dt){
   for(let i=S.trains.length-1;i>=0;i--){const t=S.trains[i];
     if(t.state==='run'){const blk=isBlocked('rail:'+t.side)&&t.d<t.path.len*.8;if(!blk)t.d+=(isGuarded('rail:'+t.side)?92:70)*dt*spd;
       t.smokeT-=dt;if(t.smokeT<=0&&!blk){t.smokeT=.07;const h=at(t.path,t.d);smoke.push({x:h.x,y:h.y-14,vx:(Math.random()-.5)*6,vy:-10-Math.random()*6,r:2.5,life:1})}
-      if(t.d>=t.path.len){t.d=t.path.len;t.state='unload';t.unload=0;t.spawned=0;if(!S.firstTrain){S.firstTrain=true;unlock('train')}}}
+      if(t.d>=t.path.len){t.d=t.path.len;t.state='unload';t.unload=0;t.spawned=0;audio.whistle();if(!S.firstTrain){S.firstTrain=true;unlock('train')}}}
     else if(t.state==='unload'){t.unload+=dt;const total=Math.round(t.people/100);const want=Math.min(total,Math.floor(t.unload/2.6*total));
       while(t.spawned<want){t.spawned++;addWalker(P.walk,{d:-Math.random()*10,prov:t.prov,people:100,del:t.spawned===Math.ceil(total*.6)?t.n:0,flag:Math.random()<.1})}
       if(t.unload>2.8){t.state='leave'}}
     else{t.alpha-=dt*.9;if(t.alpha<=0)S.trains.splice(i,1)}
   }
   // milestones
-  if(S.t>=360)unlock('basarabia');if(S.t>=150)unlock('bucovina');if(S.t>=720)unlock('night');if(S.t>=1440)unlock('dawn');
+  if(S.t>=360)unlock('basarabia');if(S.t>=150)unlock('bucovina');if(S.t>=720)unlock('night');if(S.t>=1440&&!S.facts.includes('dawn')){unlock('dawn');audio.bells('dawn')}
   const tot=sumDel();if(!S.half&&tot>=614){S.half=true;unlock('half')}
   if(rt>=S.nextEvent){S.nextEvent=rt+15+Math.random()*9;triggerEvent()}
   if(S.t>=DEADLINE)endGame();
@@ -445,7 +446,7 @@ function startScreen(){
   ${HOW_HTML}
   ${b?`<p class="best">Cel mai bun rezultat: <b aria-label="${b.medals} din 3">${stars(b.medals)}</b> · ${fmt(b.delegates)} delegați</p>`:''}
   <div class="row"><button class="btn" id="go">Începe misiunea</button>${hasFacts?'<button class="btn secondary" id="goChron">Cronica</button>':''}<span class="locked">Durează cam 4 minute.</span></div>`;
-  $('go').onclick=()=>{closeModal();begin()};
+  $('go').onclick=()=>{startAudio();closeModal();begin()};
   if(hasFacts)$('goChron').onclick=()=>showChronicle(startScreen);
   openModal();
 }
@@ -464,7 +465,7 @@ function endGame(){
   cam.anim={x:520,y:540,z:cam.minZ*1.25};
   const tot=sumDel(),crowd=S.crowd+S.walkers.reduce((a,w)=>a+(w.people||0),0);
   const {medals,verdict}=scoreFor(tot);
-  if(!S.recorded){S.recorded=true;save.recordResult({delegates:tot,crowd,medals})}
+  if(!S.recorded){S.recorded=true;save.recordResult({delegates:tot,crowd,medals});audio.bells('ending')}
   setTimeout(()=>{
     $('card').innerHTML=`<div class="ending"><div class="eyebrow">Duminică, 1 decembrie 1918</div><h2>Marea Adunare Națională</h2>
     <p class="line" style="animation-delay:.1s"><time>10:00</time><span>În sala Casinei militare, azi Sala Unirii, Gheorghe Pop de Băsești deschide Adunarea.</span></p>
@@ -491,12 +492,26 @@ $('aGuard').onclick=()=>S&&S.running&&protect();
 $('aNeg').onclick=()=>S&&S.running&&negotiate();
 $('btnChron').onclick=()=>S&&showChronicle();
 $('btnHelp').onclick=()=>S&&showHelp();
+/* ---------- sound ---------- */
+const SPK='<path d="M4 9h4l5-4v14l-5-4H4z"/>',WAVES='<path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>',MUTE='<path d="M17 9.5l5 5M22 9.5l-5 5"/>';
+function soundUI(){const b=$('btnSound'),on=save.data.sound;b.hidden=!audio.available;b.setAttribute('aria-pressed',on+'');$('icoSound').innerHTML=SPK+(on?WAVES:MUTE)}
+// the AudioContext can only start inside a user gesture
+function startAudio(){audio.init();audio.setEnabled(save.data.sound);soundUI()}
+$('btnSound').onclick=()=>{save.setSound(!save.data.sound);startAudio()};
+document.addEventListener('click',e=>{if(e.target.closest('button'))audio.click()});
 function setPaused(p){paused=p;$('icoPause').innerHTML=paused?'<path d="M7 5l12 7-12 7z"/>':'<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>';toast(paused?'Joc în pauză.':'Jocul continuă.')}
 $('btnPause').onclick=()=>setPaused(!paused);
 // leaving the tab pauses the game; the player resumes with the pause button
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&S&&S.running&&!paused)setPaused(true)});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){audio.suspend();if(S&&S.running&&!paused)setPaused(true)}else audio.resume()});
 $('btnSpeed').onclick=()=>{speed=speed===1?2:1;$('btnSpeed').textContent='×'+speed};
 document.addEventListener('keydown',e=>{if(modalOpen||!S||!S.running)return;const k=e.key;if(k>='1'&&k<='4'){S.sel=PKEYS[+k-1];hud()}else if(k==='d')sendDelegation();else if(k==='t')organizeTrain();else if(k==='p')protect();else if(k==='n')negotiate()});
+
+function tickAudio(){
+  if(!S)return;
+  if(!audio.available)$('btnSound').hidden=true;
+  audio.ambience({crowd:S.crowd,running:!paused});
+  audio.chuff(S.running&&!paused&&!modalOpen&&S.trains.some(t=>t.state==='run'));
+}
 
 /* ---------- loop ---------- */
 let last=performance.now(),hudT=0;
@@ -506,7 +521,7 @@ function loop(now){
   if(S&&S.running&&!paused&&!modalOpen){for(let i=0;i<speed;i++)update(dt)}
   if(!paused)updateSmoke(dt);
   if(!reduceMotion)for(const f of flakes){f.y+=f.v*dt;if(f.y>1){f.y=0;f.x=Math.random()}}
-  hudT-=dt;if(hudT<=0){hudT=.2;hud()}
+  hudT-=dt;if(hudT<=0){hudT=.2;hud();tickAudio()}
   draw();requestAnimationFrame(loop);
 }
 
@@ -515,6 +530,6 @@ addEventListener('resize',resize);
   resize();
   try{await Promise.race([Promise.all([document.fonts.load('700 14px "Cormorant SC"'),document.fonts.load('500 14px "Alegreya Sans"')]),new Promise(r=>setTimeout(r,1800))])}catch{/* fonts are optional */}
   await new Promise(r=>{mapImg.onload=r;mapImg.onerror=r;mapImg.src=MAP_SRC});renderBG();makeSpots();resetCrowdLayer();stamp(60);
-  save.load();S=null;requestAnimationFrame(loop);startScreen();
+  save.load();soundUI();S=null;requestAnimationFrame(loop);startScreen();
 })();
 })();
