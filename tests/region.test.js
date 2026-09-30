@@ -86,3 +86,24 @@ test('labels keep the opacity the caller set, so they fade with the map',()=>{
   assert.ok(alphas.every(a=>a<=.4+1e-9),String(alphas));
   assert.equal(g.globalAlpha,.4);
 });
+
+test('info cards give the official 1918 name and say the outlines are approximate',()=>{
+  const ai=region.info({kind:'town',key:'albaIulia'});
+  assert.equal(ai.title,'Alba Iulia');
+  assert.match(ai.text,/Gyulafehérvár/);
+  assert.match(ai.text,/Marea Adunare/);
+  assert.match(region.info({kind:'town',key:'arad'}).text,/tot Arad/);
+  const tm=region.info({kind:'town',key:'timisoara'}).text;
+  assert.match(tm,/cel maghiar, Temesvár/);
+  assert.doesNotMatch(tm,/Oraș/);
+  const bn=region.info({kind:'prov',key:'BN'});
+  assert.equal(bn.title,'Banat');
+  assert.match(bn.text,/300 de delegați/);
+  assert.match(bn.text,/aproximativ/);
+});
+
+test('every town and province has a complete card',()=>{
+  const cards=[...Object.keys(geo.TOWNS).map(key=>region.info({kind:'town',key})),
+    ...geo.LABELS.filter(l=>l.prov).map(l=>region.info({kind:'prov',key:l.prov}))];
+  for(const c of cards)for(const f of ['eyebrow','title','text'])assert.ok(c[f]&&!c[f].includes('undefined'),`${c.title} ${f}`);
+});
