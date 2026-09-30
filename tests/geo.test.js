@@ -50,3 +50,47 @@ test('the capitals of the four provinces are on the map',()=>{
   for(const k of ['baiaMare','oradea','timisoara','brasov','albaIulia'])assert.ok(TOWNS[k],k);
   assert.equal(TOWNS.albaIulia.official,'Gyulafehérvár');
 });
+
+const {RIVERS,BORDER_1918,REGIONS,LABELS}=geo;
+
+// ray casting on [lat, lon] pairs
+function inPolygon(lat,lon,poly){
+  let inside=false;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+    const [ai,oi]=poly[i],[aj,oj]=poly[j];
+    if((oi>lon)!==(oj>lon)&&lat<(aj-ai)*(lon-oi)/(oj-oi)+ai)inside=!inside;
+  }
+  return inside;
+}
+const inside=(k,prov)=>inPolygon(TOWNS[k].lat,TOWNS[k].lon,REGIONS[prov]);
+
+test('each historical region contains its own towns',()=>{
+  for(const k of ['baiaMare','sighet'])assert.ok(inside(k,'MM'),k);
+  for(const k of ['oradea','arad','beius'])assert.ok(inside(k,'CR'),k);
+  for(const k of ['timisoara','lugoj'])assert.ok(inside(k,'BN'),k);
+  for(const k of ['cluj','sibiu','brasov','albaIulia','deva','teius'])assert.ok(inside(k,'TR'),k);
+});
+
+test('no town belongs to two regions',()=>{
+  for(const k of Object.keys(TOWNS)){
+    const n=['MM','CR','BN','TR'].filter(p=>inside(k,p)).length;
+    assert.ok(n<=1,`${k} is in ${n} regions`);
+  }
+});
+
+test('rivers and the border stay inside the map',()=>{
+  const ok=([lat,lon])=>lat>=BOUNDS.latMin&&lat<=BOUNDS.latMax&&lon>=BOUNDS.lonMin&&lon<=BOUNDS.lonMax;
+  for(const r of RIVERS){assert.ok(r.pts.length>=2,r.name);assert.ok(r.pts.every(ok),r.name)}
+  assert.ok(BORDER_1918.every(ok));
+});
+
+test('the Mureș flows past Alba Iulia and Arad',()=>{
+  const m=RIVERS.find(r=>r.name==='Mureș');
+  const close=(k)=>m.pts.some(([lat,lon])=>Math.hypot(lat-TOWNS[k].lat,lon-TOWNS[k].lon)<.12);
+  assert.ok(close('albaIulia')&&close('arad')&&close('deva'));
+});
+
+test('the map names the four regions and the Kingdom of Romania',()=>{
+  const names=LABELS.map(l=>l.name);
+  for(const n of ['Maramureș','Crișana','Banat','Transilvania','Regatul României'])assert.ok(names.includes(n),n);
+});
