@@ -67,3 +67,50 @@ test('medal thresholds',()=>{
 test('core attaches itself to the DSU namespace',()=>{
   assert.equal(globalThis.DSU.core,core);
 });
+
+const {emptySave,parseSave,isBetter}=core;
+const good={v:1,best:{delegates:1100,crowd:90000,medals:2,date:'2026-12-01'},facts:['conv','train'],sound:false,plays:3};
+
+test('parseSave keeps a valid save',()=>{
+  assert.deepEqual(parseSave(JSON.stringify(good)),good);
+});
+
+test('parseSave falls back to an empty save on missing or malformed input',()=>{
+  for(const raw of [null,undefined,'','{','"text"','42','[]','null'])assert.deepEqual(parseSave(raw),emptySave(),String(raw));
+});
+
+test('parseSave rejects legacy and mistyped saves',()=>{
+  const bad=[
+    {...good,v:0},
+    {...good,v:undefined},
+    {...good,facts:'conv'},
+    {...good,facts:['conv',3]},
+    {...good,sound:'yes'},
+    {...good,plays:-1},
+    {...good,plays:1.5},
+    {...good,best:{...good.best,medals:4}},
+    {...good,best:{...good.best,delegates:5000}},
+    {...good,best:{...good.best,date:20261201}},
+    {...good,best:'1100'},
+  ];
+  for(const b of bad)assert.deepEqual(parseSave(JSON.stringify(b)),emptySave(),JSON.stringify(b));
+});
+
+test('parseSave drops duplicate facts and unknown fields',()=>{
+  const s=parseSave(JSON.stringify({...good,facts:['conv','conv'],extra:1}));
+  assert.deepEqual(s.facts,['conv']);
+  assert.equal('extra' in s,false);
+});
+
+test('empty save defaults to sound on and no best result',()=>{
+  assert.deepEqual(emptySave(),{v:1,best:null,facts:[],sound:true,plays:0});
+});
+
+test('isBetter ranks delegates first, then the crowd',()=>{
+  const best={delegates:1000,crowd:80000};
+  assert.equal(isBetter({delegates:1001,crowd:1},best),true);
+  assert.equal(isBetter({delegates:999,crowd:1e6},best),false);
+  assert.equal(isBetter({delegates:1000,crowd:80001},best),true);
+  assert.equal(isBetter({delegates:1000,crowd:80000},best),false);
+  assert.equal(isBetter({delegates:0,crowd:0},null),true);
+});

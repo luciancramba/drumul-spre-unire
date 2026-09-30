@@ -17,6 +17,8 @@ Unelte de dezvoltare (`npm install` o dată):
 - `index.html`: HUD-ul (resurse, ceas, obiectiv, provincii, cele 4 acțiuni), modalul și toast-urile.
 - `src/style.css`: tema (tokeni pe `:root`, un singur look întunecat cu carduri pergament). Breakpoint-uri pentru telefon portret, telefon landscape (max-height 480px) și desktop larg.
 - `src/core.js`: logica pură, fără DOM (constante, `mkPath`/`at`, ceasul, scorul). Se atașează la `DSU.core` și se poate importa în Node pentru teste.
+- `src/save.js`: progresul salvat în `localStorage` (cheia `dsu.v1`): cel mai bun rezultat, paginile din Cronică, sunetul. Dacă stocarea nu merge (mod privat), ține datele în memorie. Schema și validarea (`parseSave`) sunt în `core.js`.
+- `src/audio.js`: sunetul, sintetizat cu Web Audio (fără fișiere audio): vânt, murmurul mulțimii (crește cu oamenii de pe câmp), fluierul și pufăitul trenurilor, clopotele de la 1 decembrie 06:00 și de la final, semnalele de interfață. Contextul audio pornește la „Începe misiunea”, pentru că browserul cere un gest al utilizatorului. Fără Web Audio (sau dacă pornirea eșuează), butonul de sunet dispare și totul devine no-op. Dacă browserul suspendă contextul (de exemplu iOS după un apel), următoarea apăsare pe un buton îl repornește.
 - `src/game.js`: restul jocului, într-un IIFE, pe canvas 2D. Citește din `DSU.core`, deci `core.js` se încarcă înaintea lui.
 - `tests/`: teste unitare pentru `core.js`.
 - `assets/map-1918.jpg`: harta pictată cu AI (2240×1494), desenată pe lumea jocului de 1600×1067.
@@ -32,7 +34,7 @@ Unelte de dezvoltare (`npm install` o dată):
 - **Starea** e în `newState()`: resursele (Provizii, Influență, Moral), delegații trimiși și sosiți, `walkers` (fiecare sprite = 100 de oameni), `trains`, `blocks` (trasee blocate) și `guards`.
 - **Acțiunile** sunt `sendDelegation`, `organizeTrain`, `protect` și `negotiate`. Costurile sunt scrise direct în funcții și în etichetele butoanelor.
 - **Evenimentele** sunt în `EVENTS`, sub formă de carduri-telegramă cu 2 alegeri. Câmpul `target` blochează un traseu, iar alegerile pot debloca, bloca temporar, cere costuri sau debloca o pagină din Cronică.
-- **Cronica** e în `FACTS` și `FACT_ORDER`. Paginile se deblochează după ora din joc sau după acțiuni.
+- **Cronica** e în `FACTS` și `FACT_ORDER`. Paginile se deblochează după ora din joc sau după acțiuni și rămân salvate între jocuri.
 - **Reperele istorice** sunt în `LANDMARKS`: etichete pe hartă, iar la atingere se deschide o fișă (`showLandmark`). La zoom mic, cele secundare apar doar ca puncte.
 - **Mulțimea** de pe Câmpul lui Horea e desenată incremental pe canvasul `crowdL`. `spots` e sortat de la centru spre margine, iar `PER_STAMP` = 25 de oameni pe figurină.
 - **Ritmul** (în `core.js`): `RATE` = 7 minute de joc pe secundă reală, `DEADLINE` = 1680 de minute, adică aproximativ 4 minute de joc real. Tot acolo sunt `clockText` și `scoreFor` (pragurile pentru medalii).

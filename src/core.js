@@ -25,7 +25,22 @@ function scoreFor(total){
   return{medals,verdict};
 }
 
-const core={W,H,RATE,DEADLINE,QUOTAS,TOTAL,clamp,fmt,mkPath,at,clockParts,clockText,scoreFor};
+/* ---------- save schema ---------- */
+// {v:1, best:{delegates,crowd,medals,date}|null, facts:string[], sound:boolean, plays:number}
+const SAVE_VERSION=1;
+function emptySave(){return{v:SAVE_VERSION,best:null,facts:[],sound:true,plays:0}}
+const isCount=n=>Number.isInteger(n)&&n>=0;
+function validBest(b){return b===null||(!!b&&typeof b==='object'&&isCount(b.delegates)&&b.delegates<=TOTAL&&isCount(b.crowd)&&[1,2,3].includes(b.medals)&&typeof b.date==='string')}
+function parseSave(raw){
+  let d;try{d=JSON.parse(raw)}catch{return emptySave()}
+  if(!d||typeof d!=='object'||d.v!==SAVE_VERSION)return emptySave();
+  if(!validBest(d.best)||!Array.isArray(d.facts)||!d.facts.every(f=>typeof f==='string')||typeof d.sound!=='boolean'||!isCount(d.plays))return emptySave();
+  return{v:SAVE_VERSION,best:d.best&&{delegates:d.best.delegates,crowd:d.best.crowd,medals:d.best.medals,date:d.best.date},facts:[...new Set(d.facts)],sound:d.sound,plays:d.plays};
+}
+// a run beats the best one with more delegates, or the same delegates and a bigger crowd
+function isBetter(run,best){return !best||run.delegates>best.delegates||(run.delegates===best.delegates&&run.crowd>best.crowd)}
+
+const core={W,H,RATE,DEADLINE,QUOTAS,TOTAL,clamp,fmt,mkPath,at,clockParts,clockText,scoreFor,emptySave,parseSave,isBetter};
 const DSU=root.DSU||(root.DSU={});
 DSU.core=core;
 if(typeof module!=='undefined'&&module.exports)module.exports=core;
