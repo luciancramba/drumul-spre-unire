@@ -132,3 +132,22 @@ test('routePath is projected, cached and ends on Alba Iulia',()=>{
   assert.equal(routePath('BN','rail'),a);
   assert.deepEqual(a.pts[a.pts.length-1],townXY('albaIulia'));
 });
+
+const {SPEED,regionTime}=geo;
+const SPD70=.7+70/250; // same moral factor as game.js
+
+test('regional segments take 15–30 s by road and 10–25 s by rail at 70 moral',()=>{
+  for(const p of PROVS){
+    const road=regionTime(p,'road',SPD70),rail=regionTime(p,'rail',SPD70);
+    assert.ok(road>=15&&road<=30,`${p} road ${road.toFixed(1)} s`);
+    assert.ok(rail>=10&&rail<=25,`${p} rail ${rail.toFixed(1)} s`);
+  }
+});
+
+test('trains are faster than carts on the region',()=>{
+  assert.ok(SPEED.rail>SPEED.road);
+});
+
+test('higher moral means a shorter journey',()=>{
+  assert.ok(regionTime('MM','road',.7+100/250)<regionTime('MM','road',SPD70));
+});

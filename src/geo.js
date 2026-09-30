@@ -115,8 +115,13 @@ function routePath(prov,kind){
   return pathCache[key]||(pathCache[key]=core.mkPath(ROUTES[prov][kind].map(townXY)));
 }
 
+/* ---------- speeds ---------- */
+// region units per real second at spd = 1; game.js multiplies by its moral factor
+const SPEED={road:32,rail:45};
+function regionTime(prov,kind,spd){return routePath(prov,kind).len/(SPEED[kind]*spd)}
+
 /* ---------- export ---------- */
-const geo={BOUNDS,RW,RH,project,unproject,TOWNS,townXY,RIVERS,BORDER_1918,REGIONS,LABELS,ROUTES,RAIL_SIDE,JUNCTIONS,routePath};
+const geo={BOUNDS,RW,RH,project,unproject,TOWNS,townXY,RIVERS,BORDER_1918,REGIONS,LABELS,ROUTES,RAIL_SIDE,JUNCTIONS,routePath,SPEED,regionTime};
 DSU.geo=geo;
 if(typeof module!=='undefined'&&module.exports)module.exports=geo;
 })(typeof window!=='undefined'?window:globalThis);
