@@ -25,3 +25,28 @@ test('unproject inverts project',()=>{
 test('geo attaches itself to the DSU namespace',()=>{
   assert.equal(globalThis.DSU.geo,geo);
 });
+
+const {TOWNS,townXY}=geo;
+
+test('every town has a name, an official 1918 name, a tier and a place inside the map',()=>{
+  for(const [k,t] of Object.entries(TOWNS)){
+    assert.equal(typeof t.name,'string',k);
+    assert.equal(typeof t.official,'string',k);
+    assert.ok([1,2,3].includes(t.tier),k);
+    assert.ok(t.lat>BOUNDS.latMin&&t.lat<BOUNDS.latMax&&t.lon>BOUNDS.lonMin&&t.lon<BOUNDS.lonMax,k);
+  }
+});
+
+test('towns sit where they are in reality, relative to each other',()=>{
+  const [ax,ay]=townXY('albaIulia');
+  assert.ok(townXY('cluj')[1]<ay,'Cluj is north of Alba Iulia');
+  assert.ok(townXY('arad')[0]<townXY('deva')[0],'Arad is west of Deva');
+  assert.ok(townXY('brasov')[0]>townXY('sibiu')[0],'Brașov is east of Sibiu');
+  const [ox,oy]=townXY('oradea');assert.ok(ox<ax&&oy<ay,'Oradea is north-west of Alba Iulia');
+  assert.ok(townXY('timisoara')[1]>oy,'Timișoara is south of Oradea');
+});
+
+test('the capitals of the four provinces are on the map',()=>{
+  for(const k of ['baiaMare','oradea','timisoara','brasov','albaIulia'])assert.ok(TOWNS[k],k);
+  assert.equal(TOWNS.albaIulia.official,'Gyulafehérvár');
+});
