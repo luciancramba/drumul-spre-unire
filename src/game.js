@@ -498,7 +498,7 @@ function soundUI(){const b=$('btnSound'),on=save.data.sound;b.hidden=!audio.avai
 // the AudioContext can only start inside a user gesture
 function startAudio(){audio.init();audio.setEnabled(save.data.sound);soundUI()}
 $('btnSound').onclick=()=>{save.setSound(!save.data.sound);startAudio()};
-document.addEventListener('click',e=>{if(e.target.closest('button'))audio.click()});
+document.addEventListener('click',e=>{if(e.target.closest('button')){audio.resume();audio.click()}});
 function setPaused(p){paused=p;$('icoPause').innerHTML=paused?'<path d="M7 5l12 7-12 7z"/>':'<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>';toast(paused?'Joc în pauză.':'Jocul continuă.')}
 $('btnPause').onclick=()=>setPaused(!paused);
 // leaving the tab pauses the game; the player resumes with the pause button

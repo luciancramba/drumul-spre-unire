@@ -39,8 +39,10 @@ const audio={
     catch{ctx=null;audio.available=false}
   },
   setEnabled(on){enabled=!!on;if(!ctx)return;master.gain.setTargetAtTime(enabled?MASTER:0,ctx.currentTime,.05);if(enabled)audio.resume()},
-  suspend(){if(ctx&&ctx.state==='running')ctx.suspend().catch(()=>{})},
-  resume(){if(!ctx||!enabled||ctx.state==='running')return;ctx.resume().catch(()=>{audio.available=false})},
+  // the chuff timer keeps firing in a hidden tab; stop it so bursts do not pile up on a frozen clock
+  suspend(){audio.chuff(false);if(ctx&&ctx.state==='running')ctx.suspend().catch(()=>{})},
+  // a failed resume (iOS "interrupted" after a call) is retried on the next tap, so it does not disable sound
+  resume(){if(!ctx||!enabled||ctx.state==='running')return;ctx.resume().catch(()=>{})},
   // crowd: people on Câmpul lui Horea; running: false silences the beds (pause, start screen)
   ambience({crowd,running}){
     if(!ready())return;const t=ctx.currentTime;
@@ -61,7 +63,7 @@ const audio={
   },
   // idempotent: call every tick with whether any train is moving
   chuff(on){
-    if(on&&ready()&&!chuffTimer)chuffTimer=setInterval(()=>{if(ready())burst(ctx.currentTime,'lowpass',600,.08,.09)},333);
+    if(on&&ready()&&!chuffTimer)chuffTimer=setInterval(()=>{if(ready()&&ctx.state==='running')burst(ctx.currentTime,'lowpass',600,.08,.09)},333);
     else if(!on&&chuffTimer){clearInterval(chuffTimer);chuffTimer=null}
   },
   // dawn: three strikes on 1 December 06:00; ending: a peal of ten across the finale
