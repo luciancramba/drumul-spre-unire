@@ -1,19 +1,11 @@
 (()=>{
-const W=1600,H=1067,BGS=1.4;
+const {W,H,RATE,DEADLINE,QUOTAS,TOTAL,clamp,fmt,mkPath,at,clockParts,clockText,scoreFor}=DSU.core;
+const BGS=1.4;
 const $=id=>document.getElementById(id);
-const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-const fmt=n=>Math.round(n).toLocaleString('ro-RO');
 const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
-let seed=1918;const sr=()=>{seed=(seed*16807)%2147483647;return (seed-1)/2147483646};
 const pick=(a,r=Math.random)=>a[Math.floor(r()*a.length)];
 
 /* ---------- geometry ---------- */
-function mkPath(pts){const L=[0];for(let i=1;i<pts.length;i++)L.push(L[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));return{pts,L,len:L[L.length-1]}}
-function at(p,d){d=clamp(d,0,p.len);let i=1;while(i<p.L.length-1&&p.L[i]<d)i++;const a=p.pts[i-1],b=p.pts[i],s=(p.L[i]-p.L[i-1])||1,t=(d-p.L[i-1])/s;return{x:a[0]+(b[0]-a[0])*t,y:a[1]+(b[1]-a[1])*t,ang:Math.atan2(b[1]-a[1],b[0]-a[0])}}
-function distSeg(x,y,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],l=dx*dx+dy*dy||1;let t=((x-a[0])*dx+(y-a[1])*dy)/l;t=clamp(t,0,1);return Math.hypot(x-(a[0]+dx*t),y-(a[1]+dy*t))}
-function distPoly(x,y,pts){let m=1e9;for(let i=1;i<pts.length;i++)m=Math.min(m,distSeg(x,y,pts[i-1],pts[i]));return m}
-function bez(p0,p1,p2,p3,n){const o=[];for(let i=0;i<=n;i++){const t=i/n,u=1-t;o.push([u*u*u*p0[0]+3*u*u*t*p1[0]+3*u*t*t*p2[0]+t*t*t*p3[0],u*u*u*p0[1]+3*u*u*t*p1[1]+3*u*t*t*p2[1]+t*t*t*p3[1]])}return o}
-
 const CIT=[[958,505],[885,490],[760,485],[645,480],[520,480],[395,478],[330,495]];
 const P={
   roadMM:mkPath([[1180,-10],[1172,110],[1150,230],[1140,270],[1080,370],[1010,450],[975,495],...CIT]),
@@ -26,20 +18,16 @@ const P={
 };
 const F={x:645,y:500,R:258,sq:.8};
 const FIELD={x:235,y:585,rx:135,ry:165};
-const TRIB={x:243,y:465};
 const TRIBS=[[298,432],[243,465],[163,512],[213,555],[265,613]];
 const STATION={x:1325,y:555};
 
 const PROV={
-  MM:{name:'Maramureș',quota:140,road:'roadMM',rail:'E',col:'#5b86d6',via:'Baia Mare · Dej · Cluj · Teiuș'},
-  CR:{name:'Crișana',quota:260,road:'roadCR',rail:'E',col:'#e2b21f',via:'Oradea · Munții Apuseni · Zlatna'},
-  BN:{name:'Banat',quota:300,road:'roadBN',rail:'W',col:'#d4574c',via:'Timișoara · Arad · Deva · Vințu de Jos'},
-  TR:{name:'Transilvania',quota:528,road:'roadTR',rail:'W',col:'#7fb069',via:'Brașov · Sibiu · Sebeș'},
+  MM:{name:'Maramureș',quota:QUOTAS.MM,road:'roadMM',rail:'E',col:'#5b86d6',via:'Baia Mare · Dej · Cluj · Teiuș'},
+  CR:{name:'Crișana',quota:QUOTAS.CR,road:'roadCR',rail:'E',col:'#e2b21f',via:'Oradea · Munții Apuseni · Zlatna'},
+  BN:{name:'Banat',quota:QUOTAS.BN,road:'roadBN',rail:'W',col:'#d4574c',via:'Timișoara · Arad · Deva · Vințu de Jos'},
+  TR:{name:'Transilvania',quota:QUOTAS.TR,road:'roadTR',rail:'W',col:'#7fb069',via:'Brașov · Sibiu · Sebeș'},
 };
 const PKEYS=['MM','CR','BN','TR'];
-const TOTAL=1228;
-const RATE=7; // game minutes per real second
-const DEADLINE=1680; // 1 Dec 10:00 measured from 30 Nov 06:00
 
 /* ---------- canvas ---------- */
 const canvas=$('scene'),ctx=canvas.getContext('2d');
@@ -75,11 +63,7 @@ canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',
 canvas.addEventListener('wheel',e=>{e.preventDefault();zoomAt(e.clientX,e.clientY,Math.exp(-e.deltaY*.0015))},{passive:false});
 
 /* ---------- background painting ---------- */
-function poly(g,pts){g.beginPath();g.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)g.lineTo(pts[i][0],pts[i][1]);g.closePath()}
-function line(g,pts,w,col,dash){g.beginPath();g.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)g.lineTo(pts[i][0],pts[i][1]);g.strokeStyle=col;g.lineWidth=w;g.setLineDash(dash||[]);g.stroke();g.setLineDash([])}
-function star(scale,dy=0){const o=[];for(let i=0;i<7;i++){const a=-Math.PI/2+i*2*Math.PI/7;for(const [da,r] of [[-.30,.66],[-.215,.78],[0,1],[.215,.78],[.30,.66]])o.push([F.x+Math.cos(a+da)*F.R*r*scale,F.y+Math.sin(a+da)*F.R*r*scale*F.sq+dy])}return o}
 function inFort(x,y,s=1){return Math.hypot((x-F.x)/(F.R*s),(y-F.y)/(F.R*F.sq*s))<1}
-function inField(x,y,s=1.45){return Math.hypot((x-FIELD.x)/(FIELD.rx*s),(y-FIELD.y)/(FIELD.ry*s))<1}
 
 const MAP_SRC='assets/map-1918.jpg';
 const mapImg=new Image();
@@ -222,9 +206,9 @@ function triggerEvent(){
 function canPay(c){return !c||((c.prov||0)<=S.prov&&(c.infl||0)<=S.infl)}
 function showEvent(ev){
   const card=$('card');
-  card.innerHTML=`<span class="telegram">${ev.stamp} · ${clockText().split(' · ')[1]}</span><h2>${ev.title}</h2><p>${ev.text}</p><div class="choices"></div>`;
+  card.innerHTML=`<span class="telegram">${ev.stamp} · ${clockText(S.t).split(' · ')[1]}</span><h2>${ev.title}</h2><p>${ev.text}</p><div class="choices"></div>`;
   const box=card.querySelector('.choices');
-  ev.choices.forEach((ch,i)=>{const b=document.createElement('button');b.className='choice';
+  ev.choices.forEach(ch=>{const b=document.createElement('button');b.className='choice';
     const costs=[];if(ch.cost?.prov)costs.push(`−${ch.cost.prov} Provizii`);if(ch.cost?.infl)costs.push(`−${ch.cost.infl} Influență`);if(ch.moral<0)costs.push(`${ch.moral} Moral`);if(ch.blockFor)costs.push(`blocat ${ch.blockFor} s`);if(!costs.length)costs.push('gratuit');
     b.innerHTML=`<span>${ch.t}</span><span class="cost">${costs.join(' · ')}</span>`;
     if(!canPay(ch.cost))b.disabled=true;
@@ -272,10 +256,6 @@ function openModal(){$('modal').hidden=false;modalOpen=true}
 function closeModal(){$('modal').hidden=true;modalOpen=false}
 function toast(html,kind=''){const box=$('toasts');const d=document.createElement('div');d.className='toast '+kind;d.innerHTML=html;box.appendChild(d);
   while(box.children.length>3)box.firstChild.remove();setTimeout(()=>d.remove(),kind==='fact'?6000:3800);return d}
-
-/* ---------- time ---------- */
-function clockParts(){const m=6*60+Math.floor(S?S.t:0);const day=m<1440?30:1;const hm=m%1440;const hh=String(Math.floor(hm/60)).padStart(2,'0'),mm=String(hm%60).padStart(2,'0');return{day,hh,mm}}
-function clockText(){const c=clockParts();return `${c.day===30?'30 noiembrie':'1 decembrie'} 1918 · ${c.hh}:${c.mm}`}
 
 /* ---------- update ---------- */
 function arrive(w){
@@ -429,7 +409,7 @@ function hud(){
   const m=$('mMoral');m.style.width=S.moral+'%';m.style.background=S.moral>60?'var(--ok)':S.moral>30?'var(--warn)':'var(--bad)';
   const tot=sumDel();$('delCount').textContent=`${fmt(tot)} / ${fmt(TOTAL)}`;$('delBar').style.width=(tot/TOTAL*100)+'%';
   $('crowdCount').textContent=fmt(S.crowd);
-  const c=clockParts();$('dayname').textContent=c.day===30?'Sâmbătă':'Duminică';$('clock').textContent=clockText();
+  const c=clockParts(S.t);$('dayname').textContent=c.day===30?'Sâmbătă':'Duminică';$('clock').textContent=clockText(S.t);
   const left=Math.max(0,DEADLINE-S.t);const lh=Math.floor(left/60),lm=Math.floor(left%60);
   const dl=$('deadline');dl.textContent=left>0?`Adunarea începe peste ${lh} h ${String(lm).padStart(2,'0')} min`:'Adunarea a început';dl.classList.toggle('urgent',left<240);
   for(const k of PKEYS){const p=PROV[k],b=$('p'+k);b.setAttribute('aria-pressed',S.sel===k?'true':'false');
@@ -470,8 +450,7 @@ function endGame(){
   S.running=false;S.over=true;
   cam.anim={x:520,y:540,z:cam.minZ*1.25};
   const tot=sumDel(),crowd=S.crowd+S.walkers.reduce((a,w)=>a+(w.people||0),0);
-  const medals=tot>=TOTAL?3:tot>=900?2:1;
-  const verdict=tot>=TOTAL?'Toți delegații au ajuns la timp. Sala Unirii e plină.':tot>=900?'Majoritatea delegaților au ajuns la timp. Câțiva încă sunt pe drum.':'Prea mulți delegați au rămas pe drum. Încearcă din nou să-i aduci pe toți.';
+  const {medals,verdict}=scoreFor(tot);
   setTimeout(()=>{
     $('card').innerHTML=`<div class="ending"><div class="eyebrow">Duminică, 1 decembrie 1918</div><h2>Marea Adunare Națională</h2>
     <p class="line" style="animation-delay:.1s"><time>10:00</time><span>În sala Casinei militare, azi Sala Unirii, Gheorghe Pop de Băsești deschide Adunarea.</span></p>
@@ -516,7 +495,7 @@ function loop(now){
 addEventListener('resize',resize);
 (async()=>{
   resize();
-  try{await Promise.race([Promise.all([document.fonts.load('700 14px "Cormorant SC"'),document.fonts.load('500 14px "Alegreya Sans"')]),new Promise(r=>setTimeout(r,1800))])}catch(e){}
+  try{await Promise.race([Promise.all([document.fonts.load('700 14px "Cormorant SC"'),document.fonts.load('500 14px "Alegreya Sans"')]),new Promise(r=>setTimeout(r,1800))])}catch{/* fonts are optional */}
   await new Promise(r=>{mapImg.onload=r;mapImg.onerror=r;mapImg.src=MAP_SRC});renderBG();makeSpots();resetCrowdLayer();stamp(60);
   S=null;requestAnimationFrame(loop);startScreen();
 })();

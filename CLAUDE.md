@@ -8,27 +8,34 @@ Versiunea publicată ca artifact: https://claude.ai/artifact/PLPbap84scVEk7H2uVx
 Fără build. Deschide `index.html` direct în browser sau rulează `npx serve .` și intră pe http://localhost:3000.
 Singura dependență externă sunt fonturile Google (Cormorant SC, Alegreya Sans).
 
+Unelte de dezvoltare (`npm install` o dată):
+- `npm test`: testele `node:test` din `tests/` și `tools/trailer/`.
+- `npm run lint`: ESLint pe `src`, `tools` și `tests`.
+- `npm run build`: generează `dist/drumul-spre-unire.html`, un singur fișier cu CSS-ul, scripturile și harta în base64. Asta e versiunea care se publică ca artifact. Build-ul eșuează peste 16 MB.
+
 ## Structură
 - `index.html`: HUD-ul (resurse, ceas, obiectiv, provincii, cele 4 acțiuni), modalul și toast-urile.
 - `src/style.css`: tema (tokeni pe `:root`, un singur look întunecat cu carduri pergament). Breakpoint-uri pentru telefon portret, telefon landscape (max-height 480px) și desktop larg.
-- `src/game.js`: tot jocul, într-un IIFE, pe canvas 2D.
+- `src/core.js`: logica pură, fără DOM (constante, `mkPath`/`at`, ceasul, scorul). Se atașează la `DSU.core` și se poate importa în Node pentru teste.
+- `src/game.js`: restul jocului, într-un IIFE, pe canvas 2D. Citește din `DSU.core`, deci `core.js` se încarcă înaintea lui.
+- `tests/`: teste unitare pentru `core.js`.
 - `assets/map-1918.jpg`: harta pictată cu AI (2240×1494), desenată pe lumea jocului de 1600×1067.
-- `reference/`: harta originală 2K, schița de layout și `artifact-single-file.html` (versiunea cu un singur fișier, cu harta în base64, publicată ca artifact).
+- `reference/`: harta originală 2K și schița de layout.
 - `tools/make_layout.py` + `tools/map-prompt.md`: cum a fost generată harta.
+- `tools/build-single.mjs`: build-ul cu un singur fișier (`npm run build`).
 - `tools/trailer/`: trailerul social 9:16 generat cu Seedance 2.0 și lipit cu ffmpeg. Vezi `tools/trailer/README.md`.
 
 ## Cum e organizat game.js
 - **Lumea** are 1600×1067 unități, cu nordul în sus. Camera (`cam`) face pan, pinch și zoom cu rotița. `clampCam` permite o margine, ca elementele să poată fi scoase de sub HUD.
-- **Traseele** sunt polilinii în `P`: `roadMM`, `roadCR`, `roadBN`, `roadTR`, `walk` (gară → Poarta I → prin cetate → Poarta a IV-a → câmp), `railW` (dinspre sud: Vințu / Deva / Arad) și `railE` (dinspre nord: Teiuș / Cluj). Drumurile din nord și din sud continuă cu `CIT`, axa prin cetate. `mkPath`/`at` fac interpolarea după distanță.
-- **Provinciile** sunt în `PROV`, cu cota de delegați (140 + 260 + 300 + 528 = 1.228), drumul, linia ferată și culoarea.
+- **Traseele** sunt polilinii în `P`: `roadMM`, `roadCR`, `roadBN`, `roadTR`, `walk` (gară → Poarta I → prin cetate → Poarta a IV-a → câmp), `railW` (dinspre sud: Vințu / Deva / Arad) și `railE` (dinspre nord: Teiuș / Cluj). Drumurile din nord și din sud continuă cu `CIT`, axa prin cetate. `mkPath`/`at` (din `core.js`) fac interpolarea după distanță.
+- **Provinciile** sunt în `PROV`, cu cota de delegați din `QUOTAS` (140 + 260 + 300 + 528 = 1.228), drumul, linia ferată și culoarea.
 - **Starea** e în `newState()`: resursele (Provizii, Influență, Moral), delegații trimiși și sosiți, `walkers` (fiecare sprite = 100 de oameni), `trains`, `blocks` (trasee blocate) și `guards`.
 - **Acțiunile** sunt `sendDelegation`, `organizeTrain`, `protect` și `negotiate`. Costurile sunt scrise direct în funcții și în etichetele butoanelor.
 - **Evenimentele** sunt în `EVENTS`, sub formă de carduri-telegramă cu 2 alegeri. Câmpul `target` blochează un traseu, iar alegerile pot debloca, bloca temporar, cere costuri sau debloca o pagină din Cronică.
 - **Cronica** e în `FACTS` și `FACT_ORDER`. Paginile se deblochează după ora din joc sau după acțiuni.
 - **Reperele istorice** sunt în `LANDMARKS`: etichete pe hartă, iar la atingere se deschide o fișă (`showLandmark`). La zoom mic, cele secundare apar doar ca puncte.
 - **Mulțimea** de pe Câmpul lui Horea e desenată incremental pe canvasul `crowdL`. `spots` e sortat de la centru spre margine, iar `PER_STAMP` = 25 de oameni pe figurină.
-- **Ritmul**: `RATE` = 7 minute de joc pe secundă reală, `DEADLINE` = 1680 de minute, adică aproximativ 4 minute de joc real.
-- **Cod rămas din prima versiune**, încă nefolosit: `star`, `poly`, `line`, `inField`. Poate fi șters.
+- **Ritmul** (în `core.js`): `RATE` = 7 minute de joc pe secundă reală, `DEADLINE` = 1680 de minute, adică aproximativ 4 minute de joc real. Tot acolo sunt `clockText` și `scoreFor` (pragurile pentru medalii).
 
 ## Dacă se regenerează harta
 AI-ul nu respectă schița la pixel. După ce pui o hartă nouă, refă coordonatele din `P`, `CIT`, `F`, `FIELD`, `TRIBS`, `STATION`, `ch_list` și `LANDMARKS`, măsurându-le pe imaginea redimensionată la 1600 px lățime.

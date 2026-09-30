@@ -2,3 +2,4 @@ node_modules/
 .DS_Store
 tools/trailer/out/
 tools/trailer/fonts/
+dist/
