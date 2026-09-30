@@ -45,3 +45,44 @@ test('panning never loses the map: at most 90 px past its edge',()=>{
   const [rx,by]=toScreen(RW,RH);
   assert.ok(near(rx,1440-90)&&near(by,900-90),`${rx},${by}`);
 });
+
+test('road and rail segments are drawn once, even where provinces share them',()=>{
+  assert.equal(region.ROADS.length,27);
+  assert.equal(region.RAILS.length,26);
+});
+
+test('small towns get a label only when zoomed in; waypoints never do',()=>{
+  const far=region.visibleTowns(1),close=region.visibleTowns(region.TIER2);
+  assert.ok(far.includes('albaIulia')&&far.includes('cluj'));
+  assert.ok(!far.includes('teius')&&close.includes('teius'));
+  assert.ok(!close.includes('campeni'));
+});
+
+// a 2D context that accepts every call; measureText gives 7 px per letter
+function fakeCtx(){
+  const target={measureText:t=>({width:String(t).length*7})};
+  return new Proxy(target,{get:(o,k)=>k in o?o[k]:()=>{},set:(o,k,v)=>{o[k]=v;return true}});
+}
+
+test('the map draws without a browser, and a tap on a label finds the place',()=>{
+  region.init({cols:{MM:'#5b86d6',CR:'#e2b21f',BN:'#d4574c',TR:'#7fb069'},makeCanvas:()=>({getContext:fakeCtx})});
+  resize(1440,900);cam.z=cam.minZ*2;cam.x=RW/2;cam.y=RH/2;
+  region.draw(fakeCtx(),{sel:'TR',clock:1.5});
+  const [ax,ay]=toScreen(...geo.townXY('albaIulia'));
+  assert.deepEqual(region.hit(ax+20,ay),{kind:'town',key:'albaIulia'});
+  assert.equal(region.hit(-50,-50),null);
+  cam.z=cam.minZ;cam.x=RW/2;cam.y=RH/2;
+  region.draw(fakeCtx());
+  const l=geo.LABELS.find(x=>x.prov==='BN'),[bx,by]=toScreen(...geo.project(l.lat,l.lon));
+  assert.deepEqual(region.hit(bx,by),{kind:'prov',key:'BN'});
+});
+
+test('labels keep the opacity the caller set, so they fade with the map',()=>{
+  const alphas=[],g=fakeCtx();
+  g.globalAlpha=.4;g.fillText=function(){alphas.push(this.globalAlpha)};
+  resize(1440,900);cam.z=cam.minZ;cam.x=RW/2;cam.y=RH/2;
+  region.draw(g);
+  assert.ok(alphas.length>0);
+  assert.ok(alphas.every(a=>a<=.4+1e-9),String(alphas));
+  assert.equal(g.globalAlpha,.4);
+});
