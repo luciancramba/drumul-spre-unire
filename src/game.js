@@ -39,8 +39,11 @@ let vw=0,vh=0,dpr=1;
 const cam={x:760,y:470,z:1,minZ:1,anim:null};
 let camInit=false;
 function resize(){
-  dpr=Math.min(2,window.devicePixelRatio||1);
   vw=canvas.clientWidth;vh=canvas.clientHeight;
+  // a hidden page or iframe can report 0×0; wait for a real size before placing the camera
+  if(!vw||!vh)return;
+  // phones get a lower pixel ratio: a full-screen canvas at 3× is too heavy for mid-range devices
+  dpr=Math.min(vw<500?1.5:2,window.devicePixelRatio||1);
   canvas.width=Math.round(vw*dpr);canvas.height=Math.round(vh*dpr);
   cam.minZ=Math.max(vw/W,vh/H);
   if(!camInit){cam.z=cam.minZ*(vw>vh?1.3:1.1);cam.x=vw>vh?700:560;cam.y=540;camInit=true}
@@ -118,7 +121,7 @@ function newState(){
   return s;
 }
 const smoke=[];const flakes=[];
-for(let i=0;i<150;i++)flakes.push({x:Math.random(),y:Math.random(),v:.02+Math.random()*.05,r:.6+Math.random()*1.6,p:Math.random()*6});
+for(let i=0,n=innerWidth<500?75:150;i<n;i++)flakes.push({x:Math.random(),y:Math.random(),v:.02+Math.random()*.05,r:.6+Math.random()*1.6,p:Math.random()*6});
 
 function blockKeyRoad(p){return 'road:'+p}
 function blockKeyRail(p){return 'rail:'+PROV[p].rail}
@@ -537,7 +540,8 @@ function loop(now){
   requestAnimationFrame(loop);
 }
 
-addEventListener('resize',resize);
+// the observer also catches a canvas that starts hidden and gets its size later
+if(window.ResizeObserver)new ResizeObserver(()=>resize()).observe(canvas);else addEventListener('resize',resize);
 (async()=>{
   resize();
   try{await Promise.race([Promise.all([document.fonts.load('700 14px "Cormorant SC"'),document.fonts.load('500 14px "Alegreya Sans"')]),new Promise(r=>setTimeout(r,1800))])}catch{/* fonts are optional */}
