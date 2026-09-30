@@ -6,7 +6,7 @@ module.exports=[
   js.configs.recommended,
   {
     files:['src/**/*.js'],
-    languageOptions:{sourceType:'script',globals:{...globals.browser,DSU:'writable',module:'readonly'}},
+    languageOptions:{sourceType:'script',globals:{...globals.browser,DSU:'writable',module:'readonly',require:'readonly'}},
   },
   {
     files:['tests/**/*.js','eslint.config.js'],
