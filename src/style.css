@@ -130,6 +130,9 @@ button:focus-visible{outline:2px solid var(--brass-hi);outline-offset:2px}
 .fact h3{font-family:var(--display);font-size:19px;margin:0 0 3px;color:#3a2a14}
 .fact p{font-size:14.5px;margin:0}
 .locked{font-size:13px;color:var(--parch-mute);font-style:italic}
+.card .best{font-size:14.5px;color:var(--parch-mute)}
+.card .best b{color:#b3302a;letter-spacing:2px}
+#btnHelp{font-family:var(--display);font-size:18px}
 .ending .line{opacity:0;animation:lin .6s forwards;margin:0 0 8px;font-size:15.5px;line-height:1.45;display:grid;grid-template-columns:62px 1fr;gap:10px}
 .ending .line time{font-weight:800;color:#7a2a20;font-variant-numeric:tabular-nums}
 @keyframes lin{to{opacity:1}}
