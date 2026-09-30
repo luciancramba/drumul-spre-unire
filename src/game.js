@@ -47,7 +47,8 @@ function resize(){
   cam.z=clamp(cam.z,cam.minZ,cam.minZ*3.4);
   clampCam();
 }
-function clampCam(){const m=90/cam.z,hw=vw/2/cam.z,hh=vh/2/cam.z;cam.x=clamp(cam.x,hw-m,W-hw+m);cam.y=clamp(cam.y,hh-m*1.4,H-hh+m*1.4)}
+// margin: how far past the map edge the view may go, in screen pixels (lets elements come out from under the HUD)
+function clampCam(margin=90){const m=margin/cam.z,hw=vw/2/cam.z,hh=vh/2/cam.z;cam.x=clamp(cam.x,hw-m,W-hw+m);cam.y=clamp(cam.y,hh-m*1.4,H-hh+m*1.4)}
 function zoomAt(sx,sy,f){const wx=cam.x+(sx-vw/2)/cam.z,wy=cam.y+(sy-vh/2)/cam.z;cam.z=clamp(cam.z*f,cam.minZ,cam.minZ*3.4);cam.x=wx-(sx-vw/2)/cam.z;cam.y=wy-(sy-vh/2)/cam.z;clampCam()}
 const ptrs=new Map();let pinchD=0;
 let tap=null;
@@ -297,8 +298,8 @@ function update(dt){
   // milestones
   if(S.t>=360)unlock('basarabia');if(S.t>=150)unlock('bucovina');if(S.t>=720)unlock('night');if(S.t>=1440&&!S.facts.includes('dawn')){unlock('dawn');audio.bells('dawn')}
   const tot=sumDel();if(!S.half&&tot>=614){S.half=true;unlock('half')}
+  if(S.t>=DEADLINE){endGame();return}
   if(rt>=S.nextEvent){S.nextEvent=rt+15+Math.random()*9;triggerEvent()}
-  if(S.t>=DEADLINE)endGame();
 }
 function sumDel(){return PKEYS.reduce((a,k)=>a+S.del[k],0)}
 function updateSmoke(dt){
@@ -462,7 +463,7 @@ function begin(){
 }
 let cine=null;
 function endGame(){
-  S.running=false;S.over=true;audio.chuff(false);
+  S.running=false;S.over=true;cam.anim=null;audio.chuff(false);
   const tot=sumDel();
   // everyone still on the roads joins the crowd, so the field is full for the finale
   for(const w of S.walkers)if(w.people>0){S.crowd+=w.people;stamp(Math.round(w.people/PER_STAMP))}
@@ -488,6 +489,8 @@ function showEnding(){
   <div class="row"><button class="btn" id="again">Joacă din nou</button><button class="btn secondary" id="chron">Deschide Cronica</button></div></div>`;
   $('again').onclick=()=>{closeModal();cam.anim={x:vw>vh?700:560,y:540,z:cam.minZ*(vw>vh?1.3:1.1)};begin()};
   $('chron').onclick=()=>showChronicle(endGameReopen);
+  // a tap that skipped the cinematic can be delivered as a click on this card; ignore clicks for a moment
+  const card=$('card');card.style.pointerEvents='none';setTimeout(()=>{card.style.pointerEvents=''},400);
   openModal();
 }
 function endGameReopen(){closeModal();showEnding()}
@@ -510,7 +513,7 @@ $('btnPause').onclick=()=>setPaused(!paused);
 // leaving the tab pauses the game; the player resumes with the pause button
 document.addEventListener('visibilitychange',()=>{if(document.hidden){audio.suspend();if(S&&S.running&&!paused)setPaused(true)}else audio.resume()});
 $('btnSpeed').onclick=()=>{speed=speed===1?2:1;$('btnSpeed').textContent='×'+speed};
-document.addEventListener('keydown',e=>{if(cine){cine.skip();return}if(modalOpen||!S||!S.running)return;const k=e.key;if(k>='1'&&k<='4'){S.sel=PKEYS[+k-1];hud()}else if(k==='d')sendDelegation();else if(k==='t')organizeTrain();else if(k==='p')protect();else if(k==='n')negotiate()});
+document.addEventListener('keydown',e=>{if(cine){if(!['Meta','Alt','Control','Shift'].includes(e.key))cine.skip();return}if(modalOpen||!S||!S.running)return;const k=e.key;if(k>='1'&&k<='4'){S.sel=PKEYS[+k-1];hud()}else if(k==='d')sendDelegation();else if(k==='t')organizeTrain();else if(k==='p')protect();else if(k==='n')negotiate()});
 
 function tickAudio(){
   if(!S)return;
@@ -523,7 +526,8 @@ function tickAudio(){
 let last=performance.now(),hudT=0;
 function loop(now){
   const dt=Math.min(.05,(now-last)/1000);last=now;clock+=dt;
-  if(cine)cine.update(dt);
+  // the keyframes are aimed at wide screens too, so keep the flight on the map with no margin
+  if(cine){cine.update(dt);clampCam(0)}
   else if(cam.anim){const a=cam.anim,k=Math.min(1,dt*1.6);cam.x+=(a.x-cam.x)*k;cam.y+=(a.y-cam.y)*k;cam.z+=(clamp(a.z,cam.minZ,cam.minZ*3.4)-cam.z)*k;clampCam();if(Math.abs(a.z-cam.z)<.002&&Math.abs(a.x-cam.x)<.5)cam.anim=null}
   if(S&&S.running&&!paused&&!modalOpen){for(let i=0;i<speed;i++)update(dt)}
   if(!paused)updateSmoke(dt);
