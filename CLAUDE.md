@@ -17,11 +17,12 @@ Unelte de dezvoltare (`npm install` o dată):
 - `index.html`: HUD-ul (resurse, ceas, obiectiv, provincii, cele 4 acțiuni), modalul și toast-urile.
 - `src/style.css`: tema (tokeni pe `:root`, un singur look întunecat cu carduri pergament). Breakpoint-uri pentru telefon portret (sub 400 px acțiunile trec pe 2×2), telefon landscape (max-height 480px) și desktop larg. Verificat la 360×780, 390×844 și 780×360.
 - `src/core.js`: logica pură, fără DOM (constante, `mkPath`/`at`, ceasul, scorul). Se atașează la `DSU.core` și se poate importa în Node pentru teste.
+- `src/geo.js`: datele hărții regiunii la 30 noiembrie 1918, în coordonate reale (lat/lon): orașele cu numele oficial din 1918, râurile, granița cu Regatul României, conturul aproximativ al celor patru provincii istorice, drumurile și căile ferate pe provincii, vitezele pe regiune și locurile evenimentelor. `project(lat, lon)` le pune pe o lume de 2000×1740 de unități. Pregătește harta regiunii (spec: `docs/superpowers/specs/2026-09-30-region-map-design.md`); în jocul actual nu e încă folosit.
 - `src/save.js`: progresul salvat în `localStorage` (cheia `dsu.v1`): cel mai bun rezultat, paginile din Cronică, sunetul. Dacă stocarea nu merge (mod privat), ține datele în memorie. Schema și validarea (`parseSave`) sunt în `core.js`.
 - `src/audio.js`: sunetul, sintetizat cu Web Audio (fără fișiere audio): vânt, murmurul mulțimii (crește cu oamenii de pe câmp), fluierul și pufăitul trenurilor, clopotele de la 1 decembrie 06:00 și de la final, semnalele de interfață. Contextul audio pornește la „Începe misiunea”, pentru că browserul cere un gest al utilizatorului. Fără Web Audio (sau dacă pornirea eșuează), butonul de sunet dispare și totul devine no-op. Dacă browserul suspendă contextul (de exemplu iOS după un apel), următoarea apăsare pe un buton îl repornește.
 - `src/cinematic.js`: finalul cinematic de 12 secunde (Sala Unirii → Poarta a IV-a → Câmpul lui Horea → vedere de sus), cu subtitrări pe canvas. Cadrele-cheie sunt multipli de `cam.minZ`, deci rezistă la resize. Pe telefon portret, ultimul cadru păstrează toată mulțimea. Orice atingere sau tastă sare la rezultate. Cu `prefers-reduced-motion`, sare direct la ultimul cadru.
 - `src/game.js`: restul jocului, într-un IIFE, pe canvas 2D. Citește din `DSU.core`, deci `core.js` se încarcă înaintea lui.
-- `tests/`: teste unitare pentru `core.js`.
+- `tests/`: teste unitare pentru `core.js` și `geo.js`.
 - `assets/map-1918.jpg`: harta pictată cu AI (2240×1494), desenată pe lumea jocului de 1600×1067.
 - `reference/`: harta originală 2K și schița de layout.
 - `tools/make_layout.py` + `tools/map-prompt.md`: cum a fost generată harta.
@@ -57,6 +58,9 @@ AI-ul nu respectă schița la pixel. După ce pui o hartă nouă, refă coordona
 - Numărul tribunelor. Sursele diferă, așa că în text scriem „mai multe tribune”.
 - Celula lui Horea: tradiția o pune în Poarta a III-a, unii istorici în Poarta a IV-a. Fișa menționează ambele variante.
 - Toate datele din `FACTS`, înainte de a ajunge în școli.
+- Liniile de cale ferată din `geo.js` și dacă erau deschise în 1918 (mai ales Dej–Baia Mare, Sibiu–Vințu de Jos, Brașov–Făgăraș–Sibiu, Oradea–Cluj). Deocamdată delegații din Maramureș iau trenul de la Dej.
+- Contururile provinciilor istorice din `geo.js`, care sunt aproximative.
+- Numele oficiale din 1918 ale orașelor (`official` în `geo.js`).
 
 ## Roadmap propus
 1. MVP pentru 1 Decembrie 2026: capitolele 6–7, adică jocul actual, plus sunet, finalul cinematic cu camera deasupra mulțimii și testare pe telefoane medii.
