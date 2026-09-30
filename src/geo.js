@@ -120,8 +120,28 @@ function routePath(prov,kind){
 const SPEED={road:32,rail:45};
 function regionTime(prov,kind,spd){return routePath(prov,kind).len/(SPEED[kind]*spd)}
 
+/* ---------- located events ---------- */
+// keys match EVENTS[].id in game.js; on: the routes ("PROV:kind") the place lies on
+const EVENT_PLACES={
+  snowMM:{name:'Munții Apuseni',lat:46.3188,lon:23.0550,on:['CR:road']},
+  coalE:{town:'teius',on:['MM:rail','CR:rail']},
+  gardaW:{town:'deva',on:['BN:rail']},
+  jamBN:{name:'drumul dinspre Vințu',lat:45.9153,lon:23.3434,on:['BN:road']},
+  overfull:{town:'arad',on:['BN:rail']},
+};
+function placeXY(id){const pl=EVENT_PLACES[id];return pl.town?townXY(pl.town):project(pl.lat,pl.lon)}
+function distToPath(x,y,pts){
+  let m=Infinity;
+  for(let i=1;i<pts.length;i++){
+    const [ax,ay]=pts[i-1],[bx,by]=pts[i],dx=bx-ax,dy=by-ay,l=dx*dx+dy*dy||1;
+    const t=Math.max(0,Math.min(1,((x-ax)*dx+(y-ay)*dy)/l));
+    m=Math.min(m,Math.hypot(x-(ax+dx*t),y-(ay+dy*t)));
+  }
+  return m;
+}
+
 /* ---------- export ---------- */
-const geo={BOUNDS,RW,RH,project,unproject,TOWNS,townXY,RIVERS,BORDER_1918,REGIONS,LABELS,ROUTES,RAIL_SIDE,JUNCTIONS,routePath,SPEED,regionTime};
+const geo={BOUNDS,RW,RH,project,unproject,TOWNS,townXY,RIVERS,BORDER_1918,REGIONS,LABELS,ROUTES,RAIL_SIDE,JUNCTIONS,routePath,SPEED,regionTime,EVENT_PLACES,placeXY,distToPath};
 DSU.geo=geo;
 if(typeof module!=='undefined'&&module.exports)module.exports=geo;
 })(typeof window!=='undefined'?window:globalThis);

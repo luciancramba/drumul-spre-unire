@@ -151,3 +151,28 @@ test('trains are faster than carts on the region',()=>{
 test('higher moral means a shorter journey',()=>{
   assert.ok(regionTime('MM','road',.7+100/250)<regionTime('MM','road',SPD70));
 });
+
+const {EVENT_PLACES,placeXY,distToPath}=geo;
+
+test('distToPath measures the distance from a point to a polyline',()=>{
+  assert.equal(distToPath(5,3,[[0,0],[10,0]]),3);
+  assert.equal(distToPath(-4,3,[[0,0],[10,0]]),5);
+});
+
+test('each located event lies on every route listed for it',()=>{
+  for(const [id,pl] of Object.entries(EVENT_PLACES)){
+    const [x,y]=placeXY(id);
+    for(const r of pl.on){
+      const [prov,kind]=r.split(':');
+      const d=distToPath(x,y,routePath(prov,kind).pts);
+      assert.ok(d<3,`${id} is ${d.toFixed(1)} units off ${r}`);
+    }
+  }
+});
+
+test('the located events are the ones the spec places on the region',()=>{
+  assert.deepEqual(Object.keys(EVENT_PLACES).sort(),['coalE','gardaW','jamBN','overfull','snowMM']);
+  assert.deepEqual(EVENT_PLACES.coalE.on.slice().sort(),['CR:rail','MM:rail']);
+  assert.equal(EVENT_PLACES.coalE.town,'teius');
+  assert.equal(EVENT_PLACES.gardaW.town,'deva');
+});
