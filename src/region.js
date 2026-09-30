@@ -1,6 +1,7 @@
 /* Harta regiunii: camera, stratul static (hârtia și provinciile) și desenul de pe fiecare cadru
-   (granița, râurile, drumurile, căile ferate, orașele, traseele provinciei alese).
-   Coordonatele vin din DSU.geo. Liniile se desenează la fiecare cadru, ca să rămână clare și la zoom mare. */
+   (granița, râurile, drumurile, căile ferate, orașele, traseele provinciei alese), plus etichetele pe niveluri,
+   atingerile (hit) și textul fișelor (info). Coordonatele vin din DSU.geo.
+   Liniile se desenează la fiecare cadru, ca să rămână clare și la zoom mare. */
 (function(root){
 const DSU=root.DSU||(root.DSU={});
 const core=DSU.core||require('./core.js');
