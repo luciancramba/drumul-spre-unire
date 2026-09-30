@@ -39,19 +39,23 @@ let vw=0,vh=0,dpr=1;
 const cam={x:760,y:470,z:1,minZ:1,anim:null};
 let camInit=false;
 function resize(){
-  dpr=Math.min(2,window.devicePixelRatio||1);
   vw=canvas.clientWidth;vh=canvas.clientHeight;
+  // a hidden page or iframe can report 0×0; wait for a real size before placing the camera
+  if(!vw||!vh)return;
+  // phones get a lower pixel ratio: a full-screen canvas at 3× is too heavy for mid-range devices
+  dpr=Math.min(vw<500?1.5:2,window.devicePixelRatio||1);
   canvas.width=Math.round(vw*dpr);canvas.height=Math.round(vh*dpr);
   cam.minZ=Math.max(vw/W,vh/H);
   if(!camInit){cam.z=cam.minZ*(vw>vh?1.3:1.1);cam.x=vw>vh?700:560;cam.y=540;camInit=true}
   cam.z=clamp(cam.z,cam.minZ,cam.minZ*3.4);
   clampCam();
 }
-function clampCam(){const m=90/cam.z,hw=vw/2/cam.z,hh=vh/2/cam.z;cam.x=clamp(cam.x,hw-m,W-hw+m);cam.y=clamp(cam.y,hh-m*1.4,H-hh+m*1.4)}
+// margin: how far past the map edge the view may go, in screen pixels (lets elements come out from under the HUD)
+function clampCam(margin=90){const m=margin/cam.z,hw=vw/2/cam.z,hh=vh/2/cam.z;cam.x=clamp(cam.x,hw-m,W-hw+m);cam.y=clamp(cam.y,hh-m*1.4,H-hh+m*1.4)}
 function zoomAt(sx,sy,f){const wx=cam.x+(sx-vw/2)/cam.z,wy=cam.y+(sy-vh/2)/cam.z;cam.z=clamp(cam.z*f,cam.minZ,cam.minZ*3.4);cam.x=wx-(sx-vw/2)/cam.z;cam.y=wy-(sy-vh/2)/cam.z;clampCam()}
 const ptrs=new Map();let pinchD=0;
 let tap=null;
-canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});cam.anim=null;tap=ptrs.size===1?{x:e.clientX,y:e.clientY}:null});
+canvas.addEventListener('pointerdown',e=>{if(cine){cine.skip();return}canvas.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});cam.anim=null;tap=ptrs.size===1?{x:e.clientX,y:e.clientY}:null});
 canvas.addEventListener('pointermove',e=>{
   const p=ptrs.get(e.pointerId);if(!p)return;
   if(tap&&Math.hypot(e.clientX-tap.x,e.clientY-tap.y)>=7)tap=null;
@@ -61,7 +65,7 @@ canvas.addEventListener('pointermove',e=>{
 });
 const up=e=>{ptrs.delete(e.pointerId);pinchD=0;if(tap&&e.type==='pointerup'&&Math.hypot(e.clientX-tap.x,e.clientY-tap.y)<7&&!modalOpen){const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;const h=labelHits.slice().reverse().find(b=>x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h);if(h)showLandmark(h.l)}tap=null};
 canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',up);
-canvas.addEventListener('wheel',e=>{e.preventDefault();zoomAt(e.clientX,e.clientY,Math.exp(-e.deltaY*.0015))},{passive:false});
+canvas.addEventListener('wheel',e=>{e.preventDefault();if(cine)return;zoomAt(e.clientX,e.clientY,Math.exp(-e.deltaY*.0015))},{passive:false});
 
 /* ---------- background painting ---------- */
 function inFort(x,y,s=1){return Math.hypot((x-F.x)/(F.R*s),(y-F.y)/(F.R*F.sq*s))<1}
@@ -117,7 +121,7 @@ function newState(){
   return s;
 }
 const smoke=[];const flakes=[];
-for(let i=0;i<150;i++)flakes.push({x:Math.random(),y:Math.random(),v:.02+Math.random()*.05,r:.6+Math.random()*1.6,p:Math.random()*6});
+for(let i=0,n=innerWidth<500?75:150;i<n;i++)flakes.push({x:Math.random(),y:Math.random(),v:.02+Math.random()*.05,r:.6+Math.random()*1.6,p:Math.random()*6});
 
 function blockKeyRoad(p){return 'road:'+p}
 function blockKeyRail(p){return 'rail:'+PROV[p].rail}
@@ -297,8 +301,8 @@ function update(dt){
   // milestones
   if(S.t>=360)unlock('basarabia');if(S.t>=150)unlock('bucovina');if(S.t>=720)unlock('night');if(S.t>=1440&&!S.facts.includes('dawn')){unlock('dawn');audio.bells('dawn')}
   const tot=sumDel();if(!S.half&&tot>=614){S.half=true;unlock('half')}
+  if(S.t>=DEADLINE){endGame();return}
   if(rt>=S.nextEvent){S.nextEvent=rt+15+Math.random()*9;triggerEvent()}
-  if(S.t>=DEADLINE)endGame();
 }
 function sumDel(){return PKEYS.reduce((a,k)=>a+S.del[k],0)}
 function updateSmoke(dt){
@@ -393,8 +397,8 @@ function draw(){
   TRIBS.forEach((t,i)=>flagAt(t[0]+6,t[1]-2,.8,clock+i));flagAt(958,492,.8,clock+1);flagAt(885,478,.7,clock+2);flagAt(STATION.x,STATION.y-40,.7,clock+3);
   ctx.restore();
   // labels (screen size)
-  labelHits=[];for(const l of LANDMARKS)drawLabel(l);
-  if(S)for(const k in S.blocks){const [kind,id]=k.split(':');let path;if(kind==='road')path=P[PROV[id].road];else path=id==='W'?P.railW:P.railE;const q=at(path,path.len*(kind==='road'?.25:.5));
+  labelHits=[];if(!cine)for(const l of LANDMARKS)drawLabel(l);
+  if(S&&!cine)for(const k in S.blocks){const [kind,id]=k.split(':');let path;if(kind==='road')path=P[PROV[id].road];else path=id==='W'?P.railW:P.railE;const q=at(path,path.len*(kind==='road'?.25:.5));
     drawLabel({t:S.blocks[k].label,x:q.x,y:q.y-34,small:1})}
   // snowfall + vignette
   if(!reduceMotion){ctx.fillStyle='rgba(255,255,255,.75)';for(const f of flakes){const x=((f.x+Math.sin(clock*.6+f.p)*.01)%1)*vw,y=f.y*vh;ctx.beginPath();ctx.arc(x,y,f.r,0,7);ctx.fill()}}
@@ -460,31 +464,39 @@ function begin(){
   S.running=true;buildProvs();hud();unlock('conv');
   setTimeout(()=>toast('Alege o provincie, apoi <b>Organizează tren</b> sau <b>Trimite delegați</b>.'),600);
 }
+let cine=null;
 function endGame(){
-  S.running=false;S.over=true;
-  cam.anim={x:520,y:540,z:cam.minZ*1.25};
-  const tot=sumDel(),crowd=S.crowd+S.walkers.reduce((a,w)=>a+(w.people||0),0);
+  S.running=false;S.over=true;cam.anim=null;audio.chuff(false);
+  const tot=sumDel();
+  // everyone still on the roads joins the crowd, so the field is full for the finale
+  for(const w of S.walkers)if(w.people>0){S.crowd+=w.people;stamp(Math.round(w.people/PER_STAMP))}
+  S.walkers=[];
   const {medals,verdict}=scoreFor(tot);
-  if(!S.recorded){S.recorded=true;save.recordResult({delegates:tot,crowd,medals});audio.bells('ending')}
-  setTimeout(()=>{
-    $('card').innerHTML=`<div class="ending"><div class="eyebrow">Duminică, 1 decembrie 1918</div><h2>Marea Adunare Națională</h2>
-    <p class="line" style="animation-delay:.1s"><time>10:00</time><span>În sala Casinei militare, azi Sala Unirii, Gheorghe Pop de Băsești deschide Adunarea.</span></p>
-    <p class="line" style="animation-delay:.9s"><time>discurs</time><span>Vasile Goldiș susține discursul principal și prezintă rezoluția.</span></p>
-    <p class="line" style="animation-delay:1.7s"><time>vot</time><span>Delegații votează Rezoluția Unirii cu România.</span></p>
-    <p class="line" style="animation-delay:2.5s"><time>afară</time><span>Episcopul Iuliu Hossu citește rezoluția mulțimii adunate pe Câmpul lui Horea.</span></p>
-    <div class="rule"></div>
-    <div class="medals" aria-label="${medals} din 3">${[0,1,2].map(i=>`<span class="${i<medals?'on':''}">★</span>`).join('')}</div>
-    <p><b>${verdict}</b></p>
-    <div class="score"><div><span>Delegați aduși</span><b>${fmt(tot)} / ${fmt(TOTAL)}</b></div><div><span>Oameni pe Câmpul lui Horea</span><b>${fmt(crowd)}</b></div></div>
-    <p><b>Ce s-a întâmplat de fapt:</b> au fost acreditați 1.228 de delegați, iar la Alba Iulia s-au adunat peste 100.000 de oameni. A doua zi s-a format Consiliul Dirigent, condus de Iuliu Maniu. Pe 14 decembrie, actul Unirii a fost predat Regelui Ferdinand la București.</p>
-    <div class="row"><button class="btn" id="again">Joacă din nou</button><button class="btn secondary" id="chron">Deschide Cronica</button></div></div>`;
-    $('again').onclick=()=>{closeModal();cam.anim={x:vw>vh?700:560,y:540,z:cam.minZ*(vw>vh?1.3:1.1)};begin()};
-    $('chron').onclick=()=>showChronicle(endGameReopen);
-    openModal();
-  },1600);
-  S._endHTML=null;
+  S.result={tot,crowd:S.crowd,medals,verdict};
+  save.recordResult({delegates:tot,crowd:S.crowd,medals});audio.bells('ending');
+  document.body.classList.add('cinematic');
+  cine=DSU.cinematic.play(cam,{reduceMotion,portrait:vw<vh,onDone:()=>{cine=null;document.body.classList.remove('cinematic');clampCam();showEnding()}});
 }
-function endGameReopen(){closeModal();endGame()}
+function showEnding(){
+  const {tot,crowd,medals,verdict}=S.result;
+  $('card').innerHTML=`<div class="ending"><div class="eyebrow">Duminică, 1 decembrie 1918</div><h2>Marea Adunare Națională</h2>
+  <p class="line" style="animation-delay:.1s"><time>10:00</time><span>În sala Casinei militare, azi Sala Unirii, Gheorghe Pop de Băsești deschide Adunarea.</span></p>
+  <p class="line" style="animation-delay:.9s"><time>discurs</time><span>Vasile Goldiș susține discursul principal și prezintă rezoluția.</span></p>
+  <p class="line" style="animation-delay:1.7s"><time>vot</time><span>Delegații votează Rezoluția Unirii cu România.</span></p>
+  <p class="line" style="animation-delay:2.5s"><time>afară</time><span>Episcopul Iuliu Hossu citește rezoluția mulțimii adunate pe Câmpul lui Horea.</span></p>
+  <div class="rule"></div>
+  <div class="medals" aria-label="${medals} din 3">${[0,1,2].map(i=>`<span class="${i<medals?'on':''}">★</span>`).join('')}</div>
+  <p><b>${verdict}</b></p>
+  <div class="score"><div><span>Delegați aduși</span><b>${fmt(tot)} / ${fmt(TOTAL)}</b></div><div><span>Oameni pe Câmpul lui Horea</span><b>${fmt(crowd)}</b></div></div>
+  <p><b>Ce s-a întâmplat de fapt:</b> au fost acreditați 1.228 de delegați, iar la Alba Iulia s-au adunat peste 100.000 de oameni. A doua zi s-a format Consiliul Dirigent, condus de Iuliu Maniu. Pe 14 decembrie, actul Unirii a fost predat Regelui Ferdinand la București.</p>
+  <div class="row"><button class="btn" id="again">Joacă din nou</button><button class="btn secondary" id="chron">Deschide Cronica</button></div></div>`;
+  $('again').onclick=()=>{closeModal();cam.anim={x:vw>vh?700:560,y:540,z:cam.minZ*(vw>vh?1.3:1.1)};begin()};
+  $('chron').onclick=()=>showChronicle(endGameReopen);
+  // a tap that skipped the cinematic can be delivered as a click on this card; ignore clicks for a moment
+  const card=$('card');card.style.pointerEvents='none';setTimeout(()=>{card.style.pointerEvents=''},400);
+  openModal();
+}
+function endGameReopen(){closeModal();showEnding()}
 
 $('aDel').onclick=()=>S&&S.running&&sendDelegation();
 $('aTrain').onclick=()=>S&&S.running&&organizeTrain();
@@ -504,7 +516,7 @@ $('btnPause').onclick=()=>setPaused(!paused);
 // leaving the tab pauses the game; the player resumes with the pause button
 document.addEventListener('visibilitychange',()=>{if(document.hidden){audio.suspend();if(S&&S.running&&!paused)setPaused(true)}else audio.resume()});
 $('btnSpeed').onclick=()=>{speed=speed===1?2:1;$('btnSpeed').textContent='×'+speed};
-document.addEventListener('keydown',e=>{if(modalOpen||!S||!S.running)return;const k=e.key;if(k>='1'&&k<='4'){S.sel=PKEYS[+k-1];hud()}else if(k==='d')sendDelegation();else if(k==='t')organizeTrain();else if(k==='p')protect();else if(k==='n')negotiate()});
+document.addEventListener('keydown',e=>{if(cine){if(!['Meta','Alt','Control','Shift'].includes(e.key))cine.skip();return}if(modalOpen||!S||!S.running)return;const k=e.key;if(k>='1'&&k<='4'){S.sel=PKEYS[+k-1];hud()}else if(k==='d')sendDelegation();else if(k==='t')organizeTrain();else if(k==='p')protect();else if(k==='n')negotiate()});
 
 function tickAudio(){
   if(!S)return;
@@ -517,15 +529,19 @@ function tickAudio(){
 let last=performance.now(),hudT=0;
 function loop(now){
   const dt=Math.min(.05,(now-last)/1000);last=now;clock+=dt;
-  if(cam.anim){const a=cam.anim,k=Math.min(1,dt*1.6);cam.x+=(a.x-cam.x)*k;cam.y+=(a.y-cam.y)*k;cam.z+=(clamp(a.z,cam.minZ,cam.minZ*3.4)-cam.z)*k;clampCam();if(Math.abs(a.z-cam.z)<.002&&Math.abs(a.x-cam.x)<.5)cam.anim=null}
+  // the keyframes are aimed at wide screens too, so keep the flight on the map with no margin
+  if(cine){cine.update(dt);clampCam(0)}
+  else if(cam.anim){const a=cam.anim,k=Math.min(1,dt*1.6);cam.x+=(a.x-cam.x)*k;cam.y+=(a.y-cam.y)*k;cam.z+=(clamp(a.z,cam.minZ,cam.minZ*3.4)-cam.z)*k;clampCam();if(Math.abs(a.z-cam.z)<.002&&Math.abs(a.x-cam.x)<.5)cam.anim=null}
   if(S&&S.running&&!paused&&!modalOpen){for(let i=0;i<speed;i++)update(dt)}
   if(!paused)updateSmoke(dt);
   if(!reduceMotion)for(const f of flakes){f.y+=f.v*dt;if(f.y>1){f.y=0;f.x=Math.random()}}
   hudT-=dt;if(hudT<=0){hudT=.2;hud();tickAudio()}
-  draw();requestAnimationFrame(loop);
+  draw();if(cine)cine.drawOverlay(ctx,vw,vh);
+  requestAnimationFrame(loop);
 }
 
-addEventListener('resize',resize);
+// the observer also catches a canvas that starts hidden and gets its size later
+if(window.ResizeObserver)new ResizeObserver(()=>resize()).observe(canvas);else addEventListener('resize',resize);
 (async()=>{
   resize();
   try{await Promise.race([Promise.all([document.fonts.load('700 14px "Cormorant SC"'),document.fonts.load('500 14px "Alegreya Sans"')]),new Promise(r=>setTimeout(r,1800))])}catch{/* fonts are optional */}
