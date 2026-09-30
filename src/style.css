@@ -144,6 +144,10 @@ button:focus-visible{outline:2px solid var(--brass-hi);outline-offset:2px}
 .medals .on{color:#b3302a}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 
+/* cinematic ending: the HUD fades out while the camera flies over the crowd */
+#hud,#toasts{transition:opacity .6s}
+body.cinematic #hud,body.cinematic #toasts{opacity:0;visibility:hidden;transition:opacity .6s,visibility 0s .6s}
+
 @media (max-width:900px){
   .brand{display:none}
   .actions{grid-template-columns:repeat(4,1fr)}

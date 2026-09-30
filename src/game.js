@@ -51,7 +51,7 @@ function clampCam(){const m=90/cam.z,hw=vw/2/cam.z,hh=vh/2/cam.z;cam.x=clamp(cam
 function zoomAt(sx,sy,f){const wx=cam.x+(sx-vw/2)/cam.z,wy=cam.y+(sy-vh/2)/cam.z;cam.z=clamp(cam.z*f,cam.minZ,cam.minZ*3.4);cam.x=wx-(sx-vw/2)/cam.z;cam.y=wy-(sy-vh/2)/cam.z;clampCam()}
 const ptrs=new Map();let pinchD=0;
 let tap=null;
-canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});cam.anim=null;tap=ptrs.size===1?{x:e.clientX,y:e.clientY}:null});
+canvas.addEventListener('pointerdown',e=>{if(cine){cine.skip();return}canvas.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});cam.anim=null;tap=ptrs.size===1?{x:e.clientX,y:e.clientY}:null});
 canvas.addEventListener('pointermove',e=>{
   const p=ptrs.get(e.pointerId);if(!p)return;
   if(tap&&Math.hypot(e.clientX-tap.x,e.clientY-tap.y)>=7)tap=null;
@@ -61,7 +61,7 @@ canvas.addEventListener('pointermove',e=>{
 });
 const up=e=>{ptrs.delete(e.pointerId);pinchD=0;if(tap&&e.type==='pointerup'&&Math.hypot(e.clientX-tap.x,e.clientY-tap.y)<7&&!modalOpen){const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;const h=labelHits.slice().reverse().find(b=>x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h);if(h)showLandmark(h.l)}tap=null};
 canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',up);
-canvas.addEventListener('wheel',e=>{e.preventDefault();zoomAt(e.clientX,e.clientY,Math.exp(-e.deltaY*.0015))},{passive:false});
+canvas.addEventListener('wheel',e=>{e.preventDefault();if(cine)return;zoomAt(e.clientX,e.clientY,Math.exp(-e.deltaY*.0015))},{passive:false});
 
 /* ---------- background painting ---------- */
 function inFort(x,y,s=1){return Math.hypot((x-F.x)/(F.R*s),(y-F.y)/(F.R*F.sq*s))<1}
@@ -393,8 +393,8 @@ function draw(){
   TRIBS.forEach((t,i)=>flagAt(t[0]+6,t[1]-2,.8,clock+i));flagAt(958,492,.8,clock+1);flagAt(885,478,.7,clock+2);flagAt(STATION.x,STATION.y-40,.7,clock+3);
   ctx.restore();
   // labels (screen size)
-  labelHits=[];for(const l of LANDMARKS)drawLabel(l);
-  if(S)for(const k in S.blocks){const [kind,id]=k.split(':');let path;if(kind==='road')path=P[PROV[id].road];else path=id==='W'?P.railW:P.railE;const q=at(path,path.len*(kind==='road'?.25:.5));
+  labelHits=[];if(!cine)for(const l of LANDMARKS)drawLabel(l);
+  if(S&&!cine)for(const k in S.blocks){const [kind,id]=k.split(':');let path;if(kind==='road')path=P[PROV[id].road];else path=id==='W'?P.railW:P.railE;const q=at(path,path.len*(kind==='road'?.25:.5));
     drawLabel({t:S.blocks[k].label,x:q.x,y:q.y-34,small:1})}
   // snowfall + vignette
   if(!reduceMotion){ctx.fillStyle='rgba(255,255,255,.75)';for(const f of flakes){const x=((f.x+Math.sin(clock*.6+f.p)*.01)%1)*vw,y=f.y*vh;ctx.beginPath();ctx.arc(x,y,f.r,0,7);ctx.fill()}}
@@ -460,31 +460,37 @@ function begin(){
   S.running=true;buildProvs();hud();unlock('conv');
   setTimeout(()=>toast('Alege o provincie, apoi <b>Organizează tren</b> sau <b>Trimite delegați</b>.'),600);
 }
+let cine=null;
 function endGame(){
-  S.running=false;S.over=true;
-  cam.anim={x:520,y:540,z:cam.minZ*1.25};
-  const tot=sumDel(),crowd=S.crowd+S.walkers.reduce((a,w)=>a+(w.people||0),0);
+  S.running=false;S.over=true;audio.chuff(false);
+  const tot=sumDel();
+  // everyone still on the roads joins the crowd, so the field is full for the finale
+  for(const w of S.walkers)if(w.people>0){S.crowd+=w.people;stamp(Math.round(w.people/PER_STAMP))}
+  S.walkers=[];
   const {medals,verdict}=scoreFor(tot);
-  if(!S.recorded){S.recorded=true;save.recordResult({delegates:tot,crowd,medals});audio.bells('ending')}
-  setTimeout(()=>{
-    $('card').innerHTML=`<div class="ending"><div class="eyebrow">Duminică, 1 decembrie 1918</div><h2>Marea Adunare Națională</h2>
-    <p class="line" style="animation-delay:.1s"><time>10:00</time><span>În sala Casinei militare, azi Sala Unirii, Gheorghe Pop de Băsești deschide Adunarea.</span></p>
-    <p class="line" style="animation-delay:.9s"><time>discurs</time><span>Vasile Goldiș susține discursul principal și prezintă rezoluția.</span></p>
-    <p class="line" style="animation-delay:1.7s"><time>vot</time><span>Delegații votează Rezoluția Unirii cu România.</span></p>
-    <p class="line" style="animation-delay:2.5s"><time>afară</time><span>Episcopul Iuliu Hossu citește rezoluția mulțimii adunate pe Câmpul lui Horea.</span></p>
-    <div class="rule"></div>
-    <div class="medals" aria-label="${medals} din 3">${[0,1,2].map(i=>`<span class="${i<medals?'on':''}">★</span>`).join('')}</div>
-    <p><b>${verdict}</b></p>
-    <div class="score"><div><span>Delegați aduși</span><b>${fmt(tot)} / ${fmt(TOTAL)}</b></div><div><span>Oameni pe Câmpul lui Horea</span><b>${fmt(crowd)}</b></div></div>
-    <p><b>Ce s-a întâmplat de fapt:</b> au fost acreditați 1.228 de delegați, iar la Alba Iulia s-au adunat peste 100.000 de oameni. A doua zi s-a format Consiliul Dirigent, condus de Iuliu Maniu. Pe 14 decembrie, actul Unirii a fost predat Regelui Ferdinand la București.</p>
-    <div class="row"><button class="btn" id="again">Joacă din nou</button><button class="btn secondary" id="chron">Deschide Cronica</button></div></div>`;
-    $('again').onclick=()=>{closeModal();cam.anim={x:vw>vh?700:560,y:540,z:cam.minZ*(vw>vh?1.3:1.1)};begin()};
-    $('chron').onclick=()=>showChronicle(endGameReopen);
-    openModal();
-  },1600);
-  S._endHTML=null;
+  S.result={tot,crowd:S.crowd,medals,verdict};
+  save.recordResult({delegates:tot,crowd:S.crowd,medals});audio.bells('ending');
+  document.body.classList.add('cinematic');
+  cine=DSU.cinematic.play(cam,{reduceMotion,portrait:vw<vh,onDone:()=>{cine=null;document.body.classList.remove('cinematic');clampCam();showEnding()}});
 }
-function endGameReopen(){closeModal();endGame()}
+function showEnding(){
+  const {tot,crowd,medals,verdict}=S.result;
+  $('card').innerHTML=`<div class="ending"><div class="eyebrow">Duminică, 1 decembrie 1918</div><h2>Marea Adunare Națională</h2>
+  <p class="line" style="animation-delay:.1s"><time>10:00</time><span>În sala Casinei militare, azi Sala Unirii, Gheorghe Pop de Băsești deschide Adunarea.</span></p>
+  <p class="line" style="animation-delay:.9s"><time>discurs</time><span>Vasile Goldiș susține discursul principal și prezintă rezoluția.</span></p>
+  <p class="line" style="animation-delay:1.7s"><time>vot</time><span>Delegații votează Rezoluția Unirii cu România.</span></p>
+  <p class="line" style="animation-delay:2.5s"><time>afară</time><span>Episcopul Iuliu Hossu citește rezoluția mulțimii adunate pe Câmpul lui Horea.</span></p>
+  <div class="rule"></div>
+  <div class="medals" aria-label="${medals} din 3">${[0,1,2].map(i=>`<span class="${i<medals?'on':''}">★</span>`).join('')}</div>
+  <p><b>${verdict}</b></p>
+  <div class="score"><div><span>Delegați aduși</span><b>${fmt(tot)} / ${fmt(TOTAL)}</b></div><div><span>Oameni pe Câmpul lui Horea</span><b>${fmt(crowd)}</b></div></div>
+  <p><b>Ce s-a întâmplat de fapt:</b> au fost acreditați 1.228 de delegați, iar la Alba Iulia s-au adunat peste 100.000 de oameni. A doua zi s-a format Consiliul Dirigent, condus de Iuliu Maniu. Pe 14 decembrie, actul Unirii a fost predat Regelui Ferdinand la București.</p>
+  <div class="row"><button class="btn" id="again">Joacă din nou</button><button class="btn secondary" id="chron">Deschide Cronica</button></div></div>`;
+  $('again').onclick=()=>{closeModal();cam.anim={x:vw>vh?700:560,y:540,z:cam.minZ*(vw>vh?1.3:1.1)};begin()};
+  $('chron').onclick=()=>showChronicle(endGameReopen);
+  openModal();
+}
+function endGameReopen(){closeModal();showEnding()}
 
 $('aDel').onclick=()=>S&&S.running&&sendDelegation();
 $('aTrain').onclick=()=>S&&S.running&&organizeTrain();
@@ -504,7 +510,7 @@ $('btnPause').onclick=()=>setPaused(!paused);
 // leaving the tab pauses the game; the player resumes with the pause button
 document.addEventListener('visibilitychange',()=>{if(document.hidden){audio.suspend();if(S&&S.running&&!paused)setPaused(true)}else audio.resume()});
 $('btnSpeed').onclick=()=>{speed=speed===1?2:1;$('btnSpeed').textContent='×'+speed};
-document.addEventListener('keydown',e=>{if(modalOpen||!S||!S.running)return;const k=e.key;if(k>='1'&&k<='4'){S.sel=PKEYS[+k-1];hud()}else if(k==='d')sendDelegation();else if(k==='t')organizeTrain();else if(k==='p')protect();else if(k==='n')negotiate()});
+document.addEventListener('keydown',e=>{if(cine){cine.skip();return}if(modalOpen||!S||!S.running)return;const k=e.key;if(k>='1'&&k<='4'){S.sel=PKEYS[+k-1];hud()}else if(k==='d')sendDelegation();else if(k==='t')organizeTrain();else if(k==='p')protect();else if(k==='n')negotiate()});
 
 function tickAudio(){
   if(!S)return;
@@ -517,12 +523,14 @@ function tickAudio(){
 let last=performance.now(),hudT=0;
 function loop(now){
   const dt=Math.min(.05,(now-last)/1000);last=now;clock+=dt;
-  if(cam.anim){const a=cam.anim,k=Math.min(1,dt*1.6);cam.x+=(a.x-cam.x)*k;cam.y+=(a.y-cam.y)*k;cam.z+=(clamp(a.z,cam.minZ,cam.minZ*3.4)-cam.z)*k;clampCam();if(Math.abs(a.z-cam.z)<.002&&Math.abs(a.x-cam.x)<.5)cam.anim=null}
+  if(cine)cine.update(dt);
+  else if(cam.anim){const a=cam.anim,k=Math.min(1,dt*1.6);cam.x+=(a.x-cam.x)*k;cam.y+=(a.y-cam.y)*k;cam.z+=(clamp(a.z,cam.minZ,cam.minZ*3.4)-cam.z)*k;clampCam();if(Math.abs(a.z-cam.z)<.002&&Math.abs(a.x-cam.x)<.5)cam.anim=null}
   if(S&&S.running&&!paused&&!modalOpen){for(let i=0;i<speed;i++)update(dt)}
   if(!paused)updateSmoke(dt);
   if(!reduceMotion)for(const f of flakes){f.y+=f.v*dt;if(f.y>1){f.y=0;f.x=Math.random()}}
   hudT-=dt;if(hudT<=0){hudT=.2;hud();tickAudio()}
-  draw();requestAnimationFrame(loop);
+  draw();if(cine)cine.drawOverlay(ctx,vw,vh);
+  requestAnimationFrame(loop);
 }
 
 addEventListener('resize',resize);
