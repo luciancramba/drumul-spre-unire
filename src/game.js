@@ -36,7 +36,7 @@ const bg=document.createElement('canvas');
 const crowdL=document.createElement('canvas');
 const cg=crowdL.getContext('2d');
 let vw=0,vh=0,dpr=1;
-const cam={x:760,y:470,z:1,minZ:1,anim:null};
+const cam={x:760,y:470,z:1,minZ:1};
 let camInit=false;
 function resize(){
   vw=canvas.clientWidth;vh=canvas.clientHeight;
@@ -47,42 +47,71 @@ function resize(){
   dpr=Math.min(vw<500?1.5:2,window.devicePixelRatio||1);
   canvas.width=Math.round(vw*dpr);canvas.height=Math.round(vh*dpr);
   cam.minZ=Math.max(vw/W,vh/H);
-  if(!camInit){cam.z=cam.minZ*(vw>vh?1.3:1.1);cam.x=vw>vh?700:560;cam.y=540;camInit=true}
+  if(!camInit){cityHome();camInit=true}
   cam.z=clamp(cam.z,cam.minZ,cam.minZ*3.4);
   clampCam();
 }
 // margin: how far past the map edge the view may go, in screen pixels (lets elements come out from under the HUD)
 function clampCam(margin=90){const m=margin/cam.z,hw=vw/2/cam.z,hh=vh/2/cam.z;cam.x=clamp(cam.x,hw-m,W-hw+m);cam.y=clamp(cam.y,hh-m*1.4,H-hh+m*1.4)}
+// the view the city opens on: the fortress and the station
+function cityHome(){cam.z=cam.minZ*(vw>vh?1.3:1.1);cam.x=vw>vh?700:560;cam.y=540;clampCam()}
 function zoomAt(sx,sy,f){const wx=cam.x+(sx-vw/2)/cam.z,wy=cam.y+(sy-vh/2)/cam.z;cam.z=clamp(cam.z*f,cam.minZ,cam.minZ*3.4);cam.x=wx-(sx-vw/2)/cam.z;cam.y=wy-(sy-vh/2)/cam.z;clampCam()}
 const ptrs=new Map();let pinchD=0;
 let tap=null;
-canvas.addEventListener('pointerdown',e=>{if(cine){cine.skip();return}canvas.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});cam.anim=null;tap=ptrs.size===1?{x:e.clientX,y:e.clientY}:null});
+canvas.addEventListener('pointerdown',e=>{if(cine){cine.skip();return}canvas.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});tap=ptrs.size===1?{x:e.clientX,y:e.clientY}:null});
 canvas.addEventListener('pointermove',e=>{
   const p=ptrs.get(e.pointerId);if(!p)return;
   if(tap&&Math.hypot(e.clientX-tap.x,e.clientY-tap.y)>=7)tap=null;
-  if(ptrs.size===1){if(level==='region')R.pan(e.clientX-p.x,e.clientY-p.y);else{cam.x-=(e.clientX-p.x)/cam.z;cam.y-=(e.clientY-p.y)/cam.z;clampCam()}}
+  if(ptrs.size===1&&!portal.busy){if(portal.level==='region')R.pan(e.clientX-p.x,e.clientY-p.y);else{cam.x-=(e.clientX-p.x)/cam.z;cam.y-=(e.clientY-p.y)/cam.z;clampCam()}}
   p.x=e.clientX;p.y=e.clientY;
   if(ptrs.size===2){const [a,b]=[...ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);if(pinchD)zoomActive((a.x+b.x)/2,(a.y+b.y)/2,d/pinchD);pinchD=d}
 });
-const up=e=>{ptrs.delete(e.pointerId);pinchD=0;if(tap&&e.type==='pointerup'&&Math.hypot(e.clientX-tap.x,e.clientY-tap.y)<7&&!modalOpen){const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
-  if(level==='region'){const h=R.hit(x,y);if(h){const i=R.info(h);showLandmark({t:i.title,info:i.text},i.eyebrow)}}
+const up=e=>{ptrs.delete(e.pointerId);pinchD=0;if(tap&&e.type==='pointerup'&&Math.hypot(e.clientX-tap.x,e.clientY-tap.y)<7&&!modalOpen&&!portal.busy){const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+  if(portal.level==='region'){const h=R.hit(x,y);if(h){const i=R.info(h);showLandmark({t:i.title,info:i.text},i.eyebrow)}}
   else{const h=labelHits.slice().reverse().find(b=>x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h);if(h)showLandmark(h.l)}}tap=null};
 canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',up);
-canvas.addEventListener('wheel',e=>{e.preventDefault();if(cine)return;zoomActive(e.clientX,e.clientY,Math.exp(-e.deltaY*.0015))},{passive:false});
+// deltaMode 1 (lines) and 2 (pages) come from Firefox mouse wheels
+canvas.addEventListener('wheel',e=>{e.preventDefault();if(cine)return;const dy=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?100:1);zoomActive(e.clientX,e.clientY,Math.exp(-dy*.0015))},{passive:false});
 
 /* ---------- levels ---------- */
-// the region map and the city map; the button crossfades between them (portal.js will add the continuous zoom)
-let level='city',regionA=0;
-const LEVEL_FADE=reduceMotion?.2:.45;
-function zoomActive(sx,sy,f){if(level==='region')R.zoomAt(sx,sy,f);else zoomAt(sx,sy,f)}
-// now: skip the fade, as the cinematic ending does
-function setLevel(l,now=false){
-  level=l;if(now)regionA=l==='region'?1:0;
-  const city=l==='city',b=$('btnLevel');
+// the region and the city; portal.js runs the flight between them: a dive onto Alba Iulia and the climb back out
+const portal=DSU.portal.create({reduceMotion});
+let regionA=1,flight=null,afterFlight=null;
+const ALBA=DSU.geo.townXY('albaIulia');
+// flight endpoints as multiples of the region's minZ: a close-up deliberately past the zoom limit, and the view a climb lands on
+const CLOSE_K=R.MAXK*2.5,OUT_K=3;
+// zooming past a map's limit pushes toward the other level; on the region only when Alba Iulia is near the zoom
+function zoomActive(sx,sy,f){
+  if(portal.busy)return;
+  if(portal.level==='region'){
+    const z=R.cam.z;R.zoomAt(sx,sy,f);
+    const [ax,ay]=R.toScreen(...ALBA),r=Math.min(vw,vh)*.3;
+    const near=Math.hypot(ax-sx,ay-sy)<r||Math.hypot(ax-vw/2,ay-vh/2)<r;
+    if(portal.overscroll(f*z/R.cam.z,near))startFlight();
+  }else{const z=cam.z;zoomAt(sx,sy,f);if(portal.overscroll(f*z/cam.z))startFlight()}
+}
+// the region camera flies between the player's view and a close-up of Alba Iulia; the city waits in its home view
+function startFlight(){
+  if(!flight){const close={x:ALBA[0],y:ALBA[1],z:CLOSE_K};
+    if(portal.target==='city'){flight={a:{x:R.cam.x,y:R.cam.y,z:R.cam.z/R.cam.minZ},b:close};cityHome()}
+    else flight={a:{x:ALBA[0],y:ALBA[1],z:OUT_K},b:close}}
+  levelUI();
+}
+// moves the flight on; runs even when the game is paused, so the player can still look around
+function stepLevel(dt){
+  const landed=portal.update(dt)==='arrived';
+  if(flight){const q=portal.pose(flight.a,flight.b);R.cam.x=q.x;R.cam.y=q.y;R.cam.z=q.z*R.cam.minZ}
+  regionA=portal.alpha();
+  if(landed){if(portal.level==='region')R.resize(vw,vh);flight=null;if(afterFlight){const f=afterFlight;afterFlight=null;f()}}
+}
+// the button and the canvas name follow where the player is going
+function levelUI(){
+  const city=portal.target==='city',b=$('btnLevel');
   b.querySelector('span').textContent=city?'Regiune':'Oraș';
   b.setAttribute('aria-label',city?'Arată harta regiunii':'Arată orașul Alba Iulia');
   canvas.setAttribute('aria-label',city?'Harta Alba Iulia, 30 noiembrie 1918':'Harta regiunii, 30 noiembrie 1918');
 }
+levelUI();
 
 /* ---------- background painting ---------- */
 function inFort(x,y,s=1){return Math.hypot((x-F.x)/(F.R*s),(y-F.y)/(F.R*F.sq*s))<1}
@@ -461,7 +490,7 @@ const HOW_HTML=`<ul class="how">
     <li><span>1</span><div><b>Alege o provincie</b> din lista de jos.</div></li>
     <li><span>2</span><div><b>Trimite delegați</b> cu căruțele (costă Influență) sau <b>organizează un tren</b> special (costă Provizii, aduce mai mulți).</div></li>
     <li><span>3</span><div>Când un traseu se blochează, <b>negociază</b>. Ca să previi problemele, <b>protejează traseul</b> cu Gărzile Naționale.</div></li>
-    <li><span>4</span><div>Trage de hartă ca să te miști și apropie cu două degete sau cu rotița. Atinge etichetele cu <b>i</b> ca să afli ce era fiecare clădire în 1918. Butonul <b>Regiune</b> arată drumurile din cele patru provincii.</div></li>
+    <li><span>4</span><div>Trage de hartă ca să te miști și apropie cu două degete sau cu rotița. Atinge etichetele cu <b>i</b> ca să afli ce era fiecare clădire în 1918. Pe harta regiunii, apropie-te de Alba Iulia ca să intri în oraș și depărtează-te ca să revii, sau folosește butonul <b>Oraș / Regiune</b>.</div></li>
   </ul>`;
 const stars=n=>'★'.repeat(n)+'☆'.repeat(3-n);
 function startScreen(){
@@ -484,13 +513,15 @@ function showHelp(){
 function begin(){
   S=newState();rt=0;smoke.length=0;resetCrowdLayer();stamp(Math.round(1500/PER_STAMP));S.crowd=1500;
   S.running=true;buildProvs();hud();unlock('conv');
+  // every game starts on the region, with all four provinces in view
+  portal.reset('region');flight=null;afterFlight=null;regionA=1;R.home();levelUI();
   setTimeout(()=>toast('Alege o provincie, apoi <b>Organizează tren</b> sau <b>Trimite delegați</b>.'),600);
 }
 let cine=null;
 function endGame(){
-  S.running=false;S.over=true;cam.anim=null;audio.chuff(false);
-  // the cinematic flies over the city, so a player on the region is brought back first
-  setLevel('city',true);
+  S.running=false;S.over=true;audio.chuff(false);
+  // hide the HUD at once, so nothing can open a card while the flight to the city runs
+  document.body.classList.add('cinematic');
   const tot=sumDel();
   // everyone still on the roads joins the crowd, so the field is full for the finale
   for(const w of S.walkers)if(w.people>0){S.crowd+=w.people;stamp(Math.round(w.people/PER_STAMP))}
@@ -498,7 +529,11 @@ function endGame(){
   const {medals,verdict}=scoreFor(tot);
   S.result={tot,crowd:S.crowd,medals,verdict};
   save.recordResult({delegates:tot,crowd:S.crowd,medals});audio.bells('ending');
-  document.body.classList.add('cinematic');
+  // the cinematic flies over the city, so a player on the region is flown there first
+  if(portal.level==='city'&&!portal.busy)playEnding();
+  else{afterFlight=playEnding;if(portal.go('city'))startFlight()}
+}
+function playEnding(){
   cine=DSU.cinematic.play(cam,{reduceMotion,portrait:vw<vh,onDone:()=>{cine=null;document.body.classList.remove('cinematic');clampCam();showEnding()}});
 }
 function showEnding(){
@@ -514,7 +549,7 @@ function showEnding(){
   <div class="score"><div><span>Delegați aduși</span><b>${fmt(tot)} / ${fmt(TOTAL)}</b></div><div><span>Oameni pe Câmpul lui Horea</span><b>${fmt(crowd)}</b></div></div>
   <p><b>Ce s-a întâmplat de fapt:</b> au fost acreditați 1.228 de delegați, iar la Alba Iulia s-au adunat peste 100.000 de oameni. A doua zi s-a format Consiliul Dirigent, condus de Iuliu Maniu. Pe 14 decembrie, actul Unirii a fost predat Regelui Ferdinand la București.</p>
   <div class="row"><button class="btn" id="again">Joacă din nou</button><button class="btn secondary" id="chron">Deschide Cronica</button></div></div>`;
-  $('again').onclick=()=>{closeModal();cam.anim={x:vw>vh?700:560,y:540,z:cam.minZ*(vw>vh?1.3:1.1)};begin()};
+  $('again').onclick=()=>{closeModal();begin()};
   $('chron').onclick=()=>showChronicle(endGameReopen);
   // a tap that skipped the cinematic can be delivered as a click on this card; ignore clicks for a moment
   const card=$('card');card.style.pointerEvents='none';setTimeout(()=>{card.style.pointerEvents=''},400);
@@ -528,7 +563,7 @@ $('aGuard').onclick=()=>S&&S.running&&protect();
 $('aNeg').onclick=()=>S&&S.running&&negotiate();
 $('btnChron').onclick=()=>S&&showChronicle();
 $('btnHelp').onclick=()=>S&&showHelp();
-$('btnLevel').onclick=()=>S&&S.running&&setLevel(level==='city'?'region':'city');
+$('btnLevel').onclick=()=>{if(S&&S.running&&portal.go(portal.target==='city'?'region':'city'))startFlight()};
 /* ---------- sound ---------- */
 const SPK='<path d="M4 9h4l5-4v14l-5-4H4z"/>',WAVES='<path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>',MUTE='<path d="M17 9.5l5 5M22 9.5l-5 5"/>';
 function soundUI(){const b=$('btnSound'),on=save.data.sound;b.hidden=!audio.available;b.setAttribute('aria-pressed',on+'');$('icoSound').innerHTML=SPK+(on?WAVES:MUTE)}
@@ -556,9 +591,8 @@ function loop(now){
   const dt=Math.min(.05,(now-last)/1000);last=now;clock+=dt;
   // the keyframes are aimed at wide screens too, so keep the flight on the map with no margin
   if(cine){cine.update(dt);clampCam(0)}
-  else if(cam.anim){const a=cam.anim,k=Math.min(1,dt*1.6);cam.x+=(a.x-cam.x)*k;cam.y+=(a.y-cam.y)*k;cam.z+=(clamp(a.z,cam.minZ,cam.minZ*3.4)-cam.z)*k;clampCam();if(Math.abs(a.z-cam.z)<.002&&Math.abs(a.x-cam.x)<.5)cam.anim=null}
   if(S&&S.running&&!paused&&!modalOpen){for(let i=0;i<speed;i++)update(dt)}
-  regionA=clamp(regionA+(level==='region'?1:-1)*dt/LEVEL_FADE,0,1);
+  stepLevel(dt);
   if(!paused)updateSmoke(dt);
   if(!reduceMotion)for(const f of flakes){f.y+=f.v*dt;if(f.y>1){f.y=0;f.x=Math.random()}}
   hudT-=dt;if(hudT<=0){hudT=.2;hud();tickAudio()}
