@@ -61,6 +61,8 @@ button:focus-visible{outline:2px solid var(--brass-hi);outline-offset:2px}
 .tool svg{width:18px;height:18px}
 .tool .dot{width:7px;height:7px;border-radius:50%;background:var(--yellow);display:none}
 .tool.new .dot{display:block}
+/* the level button keeps one width, so switching Regiune / Oraș does not move the buttons next to it */
+#btnLevel span{min-width:3.4em;text-align:center}
 .spacer{flex:1}
 
 .bottom{display:flex;flex-direction:column;gap:8px}
@@ -173,6 +175,11 @@ body.cinematic #hud,body.cinematic #toasts{opacity:0;visibility:hidden;transitio
   .actions{grid-template-columns:repeat(2,minmax(0,1fr))}
   .act{grid-template-columns:auto 1fr;grid-template-rows:auto auto;justify-items:start;text-align:left;padding:7px 10px;column-gap:8px;row-gap:1px}
   .act svg{grid-row:1/3;width:24px;height:24px}
+  .tool{padding:0 6px}
+}
+/* 360–380 px: with the „Regiune” button the tools row is too wide, so the Chronicle keeps only its icon and dot */
+@media (max-width:380px){
+  #btnChron span:not(.dot){display:none}
 }
 @media (max-height:480px) and (orientation:landscape){
   #hud{gap:6px;padding-top:calc(env(safe-area-inset-top,0px) + 6px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 6px)}

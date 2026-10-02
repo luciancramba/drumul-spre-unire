@@ -1,6 +1,6 @@
 (()=>{
 const {W,H,RATE,DEADLINE,QUOTAS,TOTAL,clamp,fmt,mkPath,at,clockParts,clockText,scoreFor}=DSU.core;
-const save=DSU.save,audio=DSU.audio;
+const save=DSU.save,audio=DSU.audio,R=DSU.region;
 const BGS=1.4;
 const $=id=>document.getElementById(id);
 const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -42,6 +42,7 @@ function resize(){
   vw=canvas.clientWidth;vh=canvas.clientHeight;
   // a hidden page or iframe can report 0×0; wait for a real size before placing the camera
   if(!vw||!vh)return;
+  R.resize(vw,vh);
   // phones get a lower pixel ratio: a full-screen canvas at 3× is too heavy for mid-range devices
   dpr=Math.min(vw<500?1.5:2,window.devicePixelRatio||1);
   canvas.width=Math.round(vw*dpr);canvas.height=Math.round(vh*dpr);
@@ -59,13 +60,29 @@ canvas.addEventListener('pointerdown',e=>{if(cine){cine.skip();return}canvas.set
 canvas.addEventListener('pointermove',e=>{
   const p=ptrs.get(e.pointerId);if(!p)return;
   if(tap&&Math.hypot(e.clientX-tap.x,e.clientY-tap.y)>=7)tap=null;
-  if(ptrs.size===1){cam.x-=(e.clientX-p.x)/cam.z;cam.y-=(e.clientY-p.y)/cam.z;clampCam()}
+  if(ptrs.size===1){if(level==='region')R.pan(e.clientX-p.x,e.clientY-p.y);else{cam.x-=(e.clientX-p.x)/cam.z;cam.y-=(e.clientY-p.y)/cam.z;clampCam()}}
   p.x=e.clientX;p.y=e.clientY;
-  if(ptrs.size===2){const [a,b]=[...ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);if(pinchD)zoomAt((a.x+b.x)/2,(a.y+b.y)/2,d/pinchD);pinchD=d}
+  if(ptrs.size===2){const [a,b]=[...ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);if(pinchD)zoomActive((a.x+b.x)/2,(a.y+b.y)/2,d/pinchD);pinchD=d}
 });
-const up=e=>{ptrs.delete(e.pointerId);pinchD=0;if(tap&&e.type==='pointerup'&&Math.hypot(e.clientX-tap.x,e.clientY-tap.y)<7&&!modalOpen){const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;const h=labelHits.slice().reverse().find(b=>x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h);if(h)showLandmark(h.l)}tap=null};
+const up=e=>{ptrs.delete(e.pointerId);pinchD=0;if(tap&&e.type==='pointerup'&&Math.hypot(e.clientX-tap.x,e.clientY-tap.y)<7&&!modalOpen){const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+  if(level==='region'){const h=R.hit(x,y);if(h){const i=R.info(h);showLandmark({t:i.title,info:i.text},i.eyebrow)}}
+  else{const h=labelHits.slice().reverse().find(b=>x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h);if(h)showLandmark(h.l)}}tap=null};
 canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',up);
-canvas.addEventListener('wheel',e=>{e.preventDefault();if(cine)return;zoomAt(e.clientX,e.clientY,Math.exp(-e.deltaY*.0015))},{passive:false});
+canvas.addEventListener('wheel',e=>{e.preventDefault();if(cine)return;zoomActive(e.clientX,e.clientY,Math.exp(-e.deltaY*.0015))},{passive:false});
+
+/* ---------- levels ---------- */
+// the region map and the city map; the button crossfades between them (portal.js will add the continuous zoom)
+let level='city',regionA=0;
+const LEVEL_FADE=reduceMotion?.2:.45;
+function zoomActive(sx,sy,f){if(level==='region')R.zoomAt(sx,sy,f);else zoomAt(sx,sy,f)}
+// now: skip the fade, as the cinematic ending does
+function setLevel(l,now=false){
+  level=l;if(now)regionA=l==='region'?1:0;
+  const city=l==='city',b=$('btnLevel');
+  b.querySelector('span').textContent=city?'Regiune':'Oraș';
+  b.setAttribute('aria-label',city?'Arată harta regiunii':'Arată orașul Alba Iulia');
+  canvas.setAttribute('aria-label',city?'Harta Alba Iulia, 30 noiembrie 1918':'Harta regiunii, 30 noiembrie 1918');
+}
 
 /* ---------- background painting ---------- */
 function inFort(x,y,s=1){return Math.hypot((x-F.x)/(F.R*s),(y-F.y)/(F.R*F.sq*s))<1}
@@ -354,8 +371,8 @@ function drawLabel(l){
   if(l.info){const ix=sx+w/2-11;ctx.fillStyle='#7a2a20';ctx.beginPath();ctx.arc(ix,ly,6,0,7);ctx.fill();ctx.fillStyle='#fff';ctx.font='italic 700 10px Georgia,serif';ctx.fillText('i',ix,ly+.5);labelHits.push({l,x:sx-w/2,y:ly-h/2,w,h})}
   ctx.textBaseline='alphabetic';
 }
-function showLandmark(l){
-  $('card').innerHTML=`<div class="eyebrow">Alba Iulia · noiembrie 1918</div><h2>${l.t}</h2><p>${l.info}</p><div class="row"><button class="btn" id="lmClose">Înapoi la hartă</button></div>`;
+function showLandmark(l,eyebrow='Alba Iulia · noiembrie 1918'){
+  $('card').innerHTML=`<div class="eyebrow">${eyebrow}</div><h2>${l.t}</h2><p>${l.info}</p><div class="row"><button class="btn" id="lmClose">Înapoi la hartă</button></div>`;
   $('lmClose').onclick=closeModal;openModal();
 }
 function strokeWorld(pts,w,col,dash,off){ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);ctx.strokeStyle=col;ctx.lineWidth=w;ctx.setLineDash(dash||[]);ctx.lineDashOffset=off||0;ctx.stroke();ctx.setLineDash([])}
@@ -364,6 +381,14 @@ function flagAt(x,y,s,t){ctx.fillStyle='#3a2c1e';ctx.fillRect(x-.5*s,y-16*s,1*s,
 let clock=0;
 function draw(){
   ctx.setTransform(dpr,0,0,dpr,0,0);
+  // mid-fade both maps are drawn; the region goes on top with its opacity
+  if(regionA<1)drawCity();
+  if(regionA>0){ctx.globalAlpha=regionA;R.draw(ctx,{sel:S?S.sel:null,clock});ctx.globalAlpha=1}
+  // snowfall + vignette
+  if(!reduceMotion){ctx.fillStyle='rgba(255,255,255,.75)';for(const f of flakes){const x=((f.x+Math.sin(clock*.6+f.p)*.01)%1)*vw,y=f.y*vh;ctx.beginPath();ctx.arc(x,y,f.r,0,7);ctx.fill()}}
+  const vg=ctx.createRadialGradient(vw/2,vh/2,Math.min(vw,vh)*.35,vw/2,vh/2,Math.max(vw,vh)*.75);vg.addColorStop(0,'rgba(20,16,10,0)');vg.addColorStop(1,'rgba(20,16,10,.45)');ctx.fillStyle=vg;ctx.fillRect(0,0,vw,vh);
+}
+function drawCity(){
   ctx.fillStyle='#2a261f';ctx.fillRect(0,0,vw,vh);
   ctx.save();ctx.translate(vw/2,vh/2);ctx.scale(cam.z,cam.z);ctx.translate(-cam.x,-cam.y);
   ctx.drawImage(bg,0,0,W,H);
@@ -400,9 +425,6 @@ function draw(){
   labelHits=[];if(!cine)for(const l of LANDMARKS)drawLabel(l);
   if(S&&!cine)for(const k in S.blocks){const [kind,id]=k.split(':');let path;if(kind==='road')path=P[PROV[id].road];else path=id==='W'?P.railW:P.railE;const q=at(path,path.len*(kind==='road'?.25:.5));
     drawLabel({t:S.blocks[k].label,x:q.x,y:q.y-34,small:1})}
-  // snowfall + vignette
-  if(!reduceMotion){ctx.fillStyle='rgba(255,255,255,.75)';for(const f of flakes){const x=((f.x+Math.sin(clock*.6+f.p)*.01)%1)*vw,y=f.y*vh;ctx.beginPath();ctx.arc(x,y,f.r,0,7);ctx.fill()}}
-  const vg=ctx.createRadialGradient(vw/2,vh/2,Math.min(vw,vh)*.35,vw/2,vh/2,Math.max(vw,vh)*.75);vg.addColorStop(0,'rgba(20,16,10,0)');vg.addColorStop(1,'rgba(20,16,10,.45)');ctx.fillStyle=vg;ctx.fillRect(0,0,vw,vh);
 }
 
 /* ---------- HUD ---------- */
@@ -439,7 +461,7 @@ const HOW_HTML=`<ul class="how">
     <li><span>1</span><div><b>Alege o provincie</b> din lista de jos.</div></li>
     <li><span>2</span><div><b>Trimite delegați</b> cu căruțele (costă Influență) sau <b>organizează un tren</b> special (costă Provizii, aduce mai mulți).</div></li>
     <li><span>3</span><div>Când un traseu se blochează, <b>negociază</b>. Ca să previi problemele, <b>protejează traseul</b> cu Gărzile Naționale.</div></li>
-    <li><span>4</span><div>Trage de hartă ca să te miști și apropie cu două degete sau cu rotița. Atinge etichetele cu <b>i</b> ca să afli ce era fiecare clădire în 1918.</div></li>
+    <li><span>4</span><div>Trage de hartă ca să te miști și apropie cu două degete sau cu rotița. Atinge etichetele cu <b>i</b> ca să afli ce era fiecare clădire în 1918. Butonul <b>Regiune</b> arată drumurile din cele patru provincii.</div></li>
   </ul>`;
 const stars=n=>'★'.repeat(n)+'☆'.repeat(3-n);
 function startScreen(){
@@ -467,6 +489,8 @@ function begin(){
 let cine=null;
 function endGame(){
   S.running=false;S.over=true;cam.anim=null;audio.chuff(false);
+  // the cinematic flies over the city, so a player on the region is brought back first
+  setLevel('city',true);
   const tot=sumDel();
   // everyone still on the roads joins the crowd, so the field is full for the finale
   for(const w of S.walkers)if(w.people>0){S.crowd+=w.people;stamp(Math.round(w.people/PER_STAMP))}
@@ -504,6 +528,7 @@ $('aGuard').onclick=()=>S&&S.running&&protect();
 $('aNeg').onclick=()=>S&&S.running&&negotiate();
 $('btnChron').onclick=()=>S&&showChronicle();
 $('btnHelp').onclick=()=>S&&showHelp();
+$('btnLevel').onclick=()=>S&&S.running&&setLevel(level==='city'?'region':'city');
 /* ---------- sound ---------- */
 const SPK='<path d="M4 9h4l5-4v14l-5-4H4z"/>',WAVES='<path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>',MUTE='<path d="M17 9.5l5 5M22 9.5l-5 5"/>';
 function soundUI(){const b=$('btnSound'),on=save.data.sound;b.hidden=!audio.available;b.setAttribute('aria-pressed',on+'');$('icoSound').innerHTML=SPK+(on?WAVES:MUTE)}
@@ -533,6 +558,7 @@ function loop(now){
   if(cine){cine.update(dt);clampCam(0)}
   else if(cam.anim){const a=cam.anim,k=Math.min(1,dt*1.6);cam.x+=(a.x-cam.x)*k;cam.y+=(a.y-cam.y)*k;cam.z+=(clamp(a.z,cam.minZ,cam.minZ*3.4)-cam.z)*k;clampCam();if(Math.abs(a.z-cam.z)<.002&&Math.abs(a.x-cam.x)<.5)cam.anim=null}
   if(S&&S.running&&!paused&&!modalOpen){for(let i=0;i<speed;i++)update(dt)}
+  regionA=clamp(regionA+(level==='region'?1:-1)*dt/LEVEL_FADE,0,1);
   if(!paused)updateSmoke(dt);
   if(!reduceMotion)for(const f of flakes){f.y+=f.v*dt;if(f.y>1){f.y=0;f.x=Math.random()}}
   hudT-=dt;if(hudT<=0){hudT=.2;hud();tickAudio()}
@@ -545,6 +571,7 @@ if(window.ResizeObserver)new ResizeObserver(()=>resize()).observe(canvas);else a
 (async()=>{
   resize();
   try{await Promise.race([Promise.all([document.fonts.load('700 14px "Cormorant SC"'),document.fonts.load('500 14px "Alegreya Sans"')]),new Promise(r=>setTimeout(r,1800))])}catch{/* fonts are optional */}
+  R.init({cols:Object.fromEntries(PKEYS.map(k=>[k,PROV[k].col]))});
   await new Promise(r=>{mapImg.onload=r;mapImg.onerror=r;mapImg.src=MAP_SRC});renderBG();makeSpots();resetCrowdLayer();stamp(60);
   save.load();soundUI();S=null;requestAnimationFrame(loop);startScreen();
 })();
