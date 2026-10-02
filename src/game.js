@@ -490,7 +490,7 @@ const HOW_HTML=`<ul class="how">
     <li><span>1</span><div><b>Alege o provincie</b> din lista de jos.</div></li>
     <li><span>2</span><div><b>Trimite delegați</b> cu căruțele (costă Influență) sau <b>organizează un tren</b> special (costă Provizii, aduce mai mulți).</div></li>
     <li><span>3</span><div>Când un traseu se blochează, <b>negociază</b>. Ca să previi problemele, <b>protejează traseul</b> cu Gărzile Naționale.</div></li>
-    <li><span>4</span><div>Trage de hartă ca să te miști și apropie cu două degete sau cu rotița. Atinge etichetele cu <b>i</b> ca să afli ce era fiecare clădire în 1918. Pe harta regiunii, apropie-te de Alba Iulia ca să intri în oraș și depărtează-te ca să revii, sau folosește butonul <b>Oraș / Regiune</b>.</div></li>
+    <li><span>4</span><div>Trage de hartă ca să te miști și apropie cu două degete sau cu rotița. Atinge etichetele cu <b>i</b> ca să afli ce era fiecare clădire în 1918. Pe harta regiunii, apropie-te de Alba Iulia ca să intri în oraș; din oraș, depărtează-te ca să revii. Sau folosește butonul <b>Regiune / Oraș</b>.</div></li>
   </ul>`;
 const stars=n=>'★'.repeat(n)+'☆'.repeat(3-n);
 function startScreen(){
