@@ -119,6 +119,9 @@ function routePath(prov,kind){
 // region units per real second at spd = 1; game.js multiplies by its moral factor
 const SPEED={road:32,rail:45};
 function regionTime(prov,kind,spd){return routePath(prov,kind).len/(SPEED[kind]*spd)}
+// the National Guards speed units up on a guarded route, as they do in the city (carts ×1.4, trains 92 instead of 70)
+const GUARD_BOOST={road:1.4,rail:92/70};
+function regionSpeed(kind,spd,guarded){return SPEED[kind]*spd*(guarded?GUARD_BOOST[kind]:1)}
 
 /* ---------- located events ---------- */
 // keys match EVENTS[].id in game.js; on: the routes ("PROV:kind") the place lies on
@@ -140,8 +143,32 @@ function distToPath(x,y,pts){
   return m;
 }
 
+/* ---------- stops ---------- */
+const STOP_GAP=22; // a blocked unit waits this far before the place of the event, in region units
+// distance along a mkPath polyline of the point closest to (x, y)
+function alongPath(path,x,y){
+  let best=Infinity,at=0;
+  for(let i=1;i<path.pts.length;i++){
+    const [ax,ay]=path.pts[i-1],[bx,by]=path.pts[i],dx=bx-ax,dy=by-ay,l=dx*dx+dy*dy||1;
+    const t=Math.max(0,Math.min(1,((x-ax)*dx+(y-ay)*dy)/l)),d=Math.hypot(x-(ax+dx*t),y-(ay+dy*t));
+    if(d<best){best=d;at=path.L[i-1]+t*Math.sqrt(l)}
+  }
+  return at;
+}
+// where a unit on prov:kind stops for the event id: just before its place; at the junction of the line when a railway
+// does not pass it; Infinity when the event has no place on the region (it stays in the city)
+function stopDistance(id,prov,kind){
+  const pl=EVENT_PLACES[id];if(!pl)return Infinity;
+  const path=routePath(prov,kind);
+  if(pl.on.includes(prov+':'+kind)){const [x,y]=placeXY(id);return Math.max(0,alongPath(path,x,y)-STOP_GAP)}
+  if(kind==='rail')return path.L[ROUTES[prov].rail.indexOf(JUNCTIONS[RAIL_SIDE[prov]])]-STOP_GAP;
+  return Infinity;
+}
+// one step along a route: a unit before its stop cannot pass it, one already past it is not held back
+function advance(d,step,stop=Infinity){return d<=stop?Math.min(d+step,stop):d+step}
+
 /* ---------- export ---------- */
-const geo={BOUNDS,RW,RH,project,unproject,TOWNS,townXY,RIVERS,BORDER_1918,REGIONS,LABELS,ROUTES,RAIL_SIDE,JUNCTIONS,routePath,SPEED,regionTime,EVENT_PLACES,placeXY,distToPath};
+const geo={BOUNDS,RW,RH,project,unproject,TOWNS,townXY,RIVERS,BORDER_1918,REGIONS,LABELS,ROUTES,RAIL_SIDE,JUNCTIONS,routePath,SPEED,regionTime,GUARD_BOOST,regionSpeed,EVENT_PLACES,placeXY,distToPath,STOP_GAP,alongPath,stopDistance,advance};
 DSU.geo=geo;
 if(typeof module!=='undefined'&&module.exports)module.exports=geo;
 })(typeof window!=='undefined'?window:globalThis);

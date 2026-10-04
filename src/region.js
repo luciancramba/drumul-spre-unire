@@ -1,12 +1,13 @@
 /* Harta regiunii: camera, stratul static (hârtia și provinciile) și desenul de pe fiecare cadru
    (granița, râurile, drumurile, căile ferate, orașele, traseele provinciei alese), plus etichetele pe niveluri,
-   atingerile (hit) și textul fișelor (info). Coordonatele vin din DSU.geo.
+   atingerile (hit) și textul fișelor (info), plus drumurile în curs: căruțele, trenurile, blocajele și gărzile.
+   Coordonatele vin din DSU.geo.
    Liniile se desenează la fiecare cadru, ca să rămână clare și la zoom mare. */
 (function(root){
 const DSU=root.DSU||(root.DSU={});
 const core=DSU.core||require('./core.js');
 const geo=DSU.geo||require('./geo.js');
-const {clamp}=core;
+const {clamp,at}=core;
 const {RW,RH}=geo;
 
 /* ---------- camera ---------- */
@@ -35,7 +36,7 @@ function home(){cam.z=cam.minZ;cam.x=RW/2;cam.y=RH/2;clampCam()}
 const toScreen=(x,y)=>[(x-cam.x)*cam.z+vw/2,(y-cam.y)*cam.z+vh/2];
 
 /* ---------- projected shapes ---------- */
-const {TOWNS,RIVERS,BORDER_1918,REGIONS,LABELS,ROUTES,project,townXY,routePath}=geo;
+const {TOWNS,RIVERS,BORDER_1918,REGIONS,LABELS,ROUTES,project,townXY,routePath,placeXY,EVENT_PLACES}=geo;
 const proj=pts=>pts.map(([lat,lon])=>project(lat,lon));
 const RIV=RIVERS.map(r=>({major:!!r.major,pts:proj(r.pts)}));
 const BORDER=proj(BORDER_1918);
@@ -75,7 +76,9 @@ function init({cols:c,makeCanvas=()=>document.createElement('canvas')}){
 /* ---------- per frame ---------- */
 function line(g,pts,w,col,dash,off){poly(g,pts,false);g.strokeStyle=col;g.lineWidth=w;g.setLineDash(dash||[]);g.lineDashOffset=off||0;g.stroke();g.setLineDash([])}
 // sel: the selected province key or null; clock: seconds, animates the dashes
-function draw(g,{sel=null,clock=0}={}){
+// units: {kind:'cart'|'train', prov, d, n}, with d the distance along that province's road or rail route
+// blocks: {id, label} for events placed on the region; guards: {prov, kind} for guarded routes
+function draw(g,{sel=null,clock=0,units=[],blocks=[],guards=[]}={}){
   g.fillStyle='#2a261f';g.fillRect(0,0,vw,vh);
   g.save();g.translate(vw/2,vh/2);g.scale(cam.z,cam.z);g.translate(-cam.x,-cam.y);
   if(layer)g.drawImage(layer,0,0,RW,RH);
@@ -85,9 +88,66 @@ function draw(g,{sel=null,clock=0}={}){
   line(g,BORDER,2.2*px,'#7a2a20',[8*px,4*px,1.5*px,4*px]);
   for(const e of ROADS)line(g,e,1.6*px,'rgba(122,92,48,.8)');
   for(const e of RAILS){line(g,e,3.2*px,'#2a2018');line(g,e,1.4*px,'#efe3c6',[5*px,5*px])}
+  for(const gd of guards)line(g,routePath(gd.prov,gd.kind).pts,11*px,`rgba(80,130,220,${.28+Math.sin(clock*4)*.1})`);
   if(sel)for(const kind of ['road','rail'])line(g,routePath(sel,kind).pts,(kind==='rail'?5:6)*px,cols[sel],[10*px,7*px],-clock*28*px);
   g.restore();
   labels(g);
+  journeys(g,units,blocks,clock);
+}
+
+/* ---------- journeys ---------- */
+const routeKind=u=>u.kind==='train'?'rail':'road';
+// where a unit is on the world of the region
+function unitWorld(u){return at(routePath(u.prov,routeKind(u)),u.d)}
+function badge(g,x,y,text,col){
+  g.font='700 12px "Alegreya Sans",sans-serif';g.textAlign='center';g.textBaseline='middle';
+  const w=g.measureText(text).width+14;
+  g.fillStyle='rgba(24,19,13,.9)';g.fillRect(x-w/2,y-8,w,16);g.fillStyle=col;g.fillRect(x-w/2,y-8,4,16);
+  g.fillStyle='#ecdfc2';g.fillText(text,x+2,y+.5);
+}
+// a cart with a tricolour, 18 px wide, facing the way it goes
+function cartGlyph(g,x,y,dir){
+  g.save();g.translate(x,y);g.scale(dir,1);
+  g.fillStyle='rgba(30,22,14,.3)';g.beginPath();g.ellipse(0,5,11,2.5,0,0,7);g.fill();
+  g.fillStyle='#4a3322';g.fillRect(-9,-6,18,8);
+  g.fillStyle='#e6dfcf';g.beginPath();g.moveTo(-9,-6);g.quadraticCurveTo(0,-15,9,-6);g.fill();
+  g.fillStyle='#2a211a';g.beginPath();g.arc(-5,3,3,0,7);g.arc(5,3,3,0,7);g.fill();
+  g.fillStyle='#3a2c1e';g.fillRect(9,-17,1.2,13);
+  g.fillStyle='#2c4d9c';g.fillRect(10.2,-17,3,3.6);g.fillStyle='#e2b21f';g.fillRect(10.2,-13.4,3,3.6);g.fillStyle='#b3302a';g.fillRect(10.2,-9.8,3,3.6);
+  g.restore();
+}
+// a small locomotive; the smoke is four puffs left behind along the line, 12 screen pixels apart, so it needs no state
+function trainGlyph(g,x,y,dir,u,clock){
+  const path=routePath(u.prov,'rail');
+  for(let i=4;i>=1;i--){const q=at(path,u.d-i*12/cam.z),[px,py]=toScreen(q.x,q.y);
+    g.fillStyle=`rgba(70,66,62,${.46-i*.08})`;g.beginPath();g.arc(px+Math.sin(clock*5+i)*1.5,py-9-i*3,2.4+i*1.1,0,7);g.fill()}
+  g.save();g.translate(x,y);g.scale(dir,1);
+  g.fillStyle='rgba(30,22,14,.3)';g.fillRect(-12,4,24,2.5);
+  g.fillStyle='#1c1a18';g.fillRect(-12,-6,24,10);g.fillStyle='#2b2724';g.fillRect(-12,-6,8,10);
+  g.fillStyle='#7a2a20';g.fillRect(-12,3,24,1.6);g.fillStyle='#111';g.fillRect(5,-10,4,5);
+  g.fillStyle='#e8d9a0';g.fillRect(-9,-4,3,3);
+  g.restore();
+}
+// markers of events placed on the region: a red disc with a cross and the short name of the event
+function blockMarker(g,id,label){
+  const [x,y]=toScreen(...placeXY(id));
+  g.fillStyle='rgba(179,48,42,.94)';g.beginPath();g.arc(x,y-12,9,0,7);g.fill();
+  g.strokeStyle='#fff';g.lineWidth=2;g.beginPath();g.moveTo(x-4,y-16);g.lineTo(x+4,y-8);g.moveTo(x+4,y-16);g.lineTo(x-4,y-8);g.stroke();
+  g.font='700 11.5px "Cormorant SC",Georgia,serif';g.textAlign='center';g.textBaseline='middle';
+  const w=g.measureText(label).width+12;
+  g.fillStyle='rgba(24,19,13,.85)';g.fillRect(x-w/2,y-42,w,16);g.fillStyle='#ecdfc2';g.fillText(label,x,y-33.5);
+}
+function journeys(g,units,blocks,clock){
+  g.save();
+  for(const u of units){
+    const q=unitWorld(u),[x,y]=toScreen(q.x,q.y),dir=Math.cos(q.ang)>=0?1:-1;
+    if(x<-60||x>vw+60||y<-60||y>vh+60)continue;
+    if(u.kind==='train')trainGlyph(g,x,y,dir,u,clock);else cartGlyph(g,x,y,dir);
+    badge(g,x,y+17,String(u.n),cols[u.prov]);
+  }
+  // the markers go last, so a unit that stopped at one does not cover the thing that stopped it
+  for(const b of blocks)if(EVENT_PLACES[b.id])blockMarker(g,b.id,b.label);
+  g.restore();
 }
 
 /* ---------- labels and taps ---------- */
@@ -139,7 +199,7 @@ function info({kind,key}){
 }
 
 /* ---------- export ---------- */
-const region={cam,resize,pan,zoomAt,home,toScreen,MAXK,ROADS,RAILS,init,draw,visibleTowns,TIER2,hit,info};
+const region={cam,resize,pan,zoomAt,home,toScreen,MAXK,ROADS,RAILS,init,draw,visibleTowns,TIER2,hit,info,unitWorld};
 DSU.region=region;
 if(typeof module!=='undefined'&&module.exports)module.exports=region;
 })(typeof window!=='undefined'?window:globalThis);

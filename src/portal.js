@@ -14,16 +14,18 @@ const smooth=(a,b,t)=>{const s=clamp((t-a)/(b-a),0,1);return s*s*(3-2*s)};
 
 function create({reduceMotion=false,level='region'}={}){
   const dur=reduceMotion?FLIGHT_REDUCED:FLIGHT;
-  const p={u:level==='city'?1:0,dir:0,push:0,
+  const p={u:level==='city'?1:0,dir:0,push:0,attention:null, // attention: the level where something happened while the player looked elsewhere
     get level(){return p.u>=1?'city':'region'},
     get busy(){return p.dir!==0},
     // where the player is going, or where they are when nothing moves
     get target(){return p.dir>0?'city':p.dir<0?'region':p.level},
     // region opacity: the city takes over in the last 70 % of the way down
     alpha(){return 1-smooth(.3,1,p.u)},
-    reset(l){p.u=l==='city'?1:0;p.dir=0;p.push=0},
+    reset(l){p.u=l==='city'?1:0;p.dir=0;p.push=0;p.attention=null},
+    // something happened on this level; true when the player is not looking at it (the button shows a dot)
+    notify(lv){if(lv===p.target)return false;p.attention=lv;return true},
     // starts a flight, or turns one around; false when already there or already going there
-    go(to){const d=to==='city'?1:-1;if(p.dir===d||(!p.dir&&p.target===to))return false;p.dir=d;p.push=0;return true},
+    go(to){const d=to==='city'?1:-1;if(p.dir===d||(!p.dir&&p.target===to))return false;p.dir=d;p.push=0;if(p.attention===to)p.attention=null;return true},
     // f: the part of a zoom step the camera could not take at its limit (>1 in, <1 out)
     // near: on the region, whether Alba Iulia is close to where the player zooms
     overscroll(f,near=true){
