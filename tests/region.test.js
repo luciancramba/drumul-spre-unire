@@ -199,3 +199,40 @@ test('the smoke trail keeps its size on the screen at every zoom',()=>{
     for(const [x,y] of puffs)assert.ok(Math.hypot(x-ux,y-uy)<70,`${k}×: ${Math.hypot(x-ux,y-uy)}`);
   }
 });
+
+// a layer canvas that records every call made on it
+function recordingLayer(){
+  const calls=[],g=new Proxy({},{get:(o,k)=>k in o?o[k]:((...a)=>{calls.push([k,...a])}),set:(o,k,v)=>{o[k]=v;return true}});
+  return{calls,makeCanvas:()=>({getContext:()=>g})};
+}
+const COLS={MM:'#5b86d6',CR:'#e2b21f',BN:'#d4574c',TR:'#7fb069'};
+
+test('a painted background is drawn over the whole world, under the washes of the provinces',()=>{
+  const image={naturalWidth:100,width:100,height:87},L=recordingLayer();
+  region.init({cols:COLS,makeCanvas:L.makeCanvas,image});
+  const at=L.calls.findIndex(c=>c[0]==='drawImage');
+  assert.ok(at>=0,'no drawImage');
+  assert.deepEqual(L.calls[at].slice(1),[image,0,0,RW,RH]);
+  assert.equal(L.calls.filter(c=>c[0]==='drawImage').length,1);
+  assert.ok(L.calls.slice(at).filter(c=>c[0]==='fill').length>=5,'the Kingdom and the four provinces are washed over it');
+});
+
+test('without an image, or with one that failed to load, the paper stays',()=>{
+  for(const image of [undefined,null,{naturalWidth:0}]){
+    const L=recordingLayer();
+    region.init({cols:COLS,makeCanvas:L.makeCanvas,image});
+    assert.equal(L.calls.filter(c=>c[0]==='drawImage').length,0);
+    assert.ok(L.calls.filter(c=>c[0]==='fillRect').length>2000,'the paper grain is drawn');
+  }
+});
+
+test('on a painted background the roads get a halo, and the paper needs none',()=>{
+  const strokes=image=>{
+    region.init({cols:COLS,makeCanvas:recordingLayer().makeCanvas,image});
+    resize(1440,900);cam.z=cam.minZ;cam.x=RW/2;cam.y=RH/2;
+    const {g,calls}=countingCtx();region.draw(g,{});return calls.stroke;
+  };
+  const paper=strokes(null),painted=strokes({naturalWidth:100});
+  assert.equal(painted,paper+region.ROADS.length);
+  region.init({cols:COLS,makeCanvas:recordingLayer().makeCanvas});  // leave the module as the other tests expect it
+});
