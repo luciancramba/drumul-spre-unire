@@ -173,6 +173,14 @@ test('guards, carts, trains and blocks each leave their marks, and the canvas is
   assert.equal(all.g.globalAlpha,.4);
 });
 
+test('a block marker is drawn on top of the unit that stopped at it',()=>{
+  resize(1440,900);cam.z=cam.minZ;cam.x=RW/2;cam.y=RH/2;
+  const texts=[],g=fakeCtx();g.fillText=function(t){texts.push(t)};
+  const stop=geo.stopDistance('snowMM','CR','road');
+  region.draw(g,{units:[{kind:'cart',prov:'CR',d:stop,n:77}],blocks:[{id:'snowMM',label:'viscol'}]});
+  assert.ok(texts.indexOf('77')>=0&&texts.indexOf('viscol')>texts.indexOf('77'),texts.join('|'));
+});
+
 test('a block for an event with no place on the region is skipped, not drawn',()=>{
   const {g}=countingCtx();
   assert.doesNotThrow(()=>region.draw(g,{blocks:[{id:'bridgeTR',label:'pod aglomerat'}]}));

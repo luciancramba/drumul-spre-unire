@@ -139,13 +139,14 @@ function blockMarker(g,id,label){
 }
 function journeys(g,units,blocks,clock){
   g.save();
-  for(const b of blocks)if(EVENT_PLACES[b.id])blockMarker(g,b.id,b.label);
   for(const u of units){
     const q=unitWorld(u),[x,y]=toScreen(q.x,q.y),dir=Math.cos(q.ang)>=0?1:-1;
     if(x<-60||x>vw+60||y<-60||y>vh+60)continue;
     if(u.kind==='train')trainGlyph(g,x,y,dir,u,clock);else cartGlyph(g,x,y,dir);
     badge(g,x,y+17,String(u.n),cols[u.prov]);
   }
+  // the markers go last, so a unit that stopped at one does not cover the thing that stopped it
+  for(const b of blocks)if(EVENT_PLACES[b.id])blockMarker(g,b.id,b.label);
   g.restore();
 }
 
