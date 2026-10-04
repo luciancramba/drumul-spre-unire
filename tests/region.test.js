@@ -119,3 +119,75 @@ test('every town and province has a complete card',()=>{
     ...geo.LABELS.filter(l=>l.prov).map(l=>region.info({kind:'prov',key:l.prov}))];
   for(const c of cards)for(const f of ['eyebrow','title','text'])assert.ok(c[f]&&!c[f].includes('undefined'),`${c.title} ${f}`);
 });
+
+test('units sit on their own route, and a unit that went past the end stays on Alba Iulia',()=>{
+  const start=region.unitWorld({kind:'cart',prov:'BN',d:0}),[tx,ty]=geo.townXY('timisoara');
+  assert.ok(near(start.x,tx)&&near(start.y,ty));
+  const end=region.unitWorld({kind:'train',prov:'TR',d:1e6}),[ax,ay]=geo.townXY('albaIulia');
+  assert.ok(near(end.x,ax)&&near(end.y,ay));
+  const mid=region.unitWorld({kind:'train',prov:'MM',d:geo.routePath('MM','rail').len/2});
+  assert.ok(geo.distToPath(mid.x,mid.y,geo.routePath('MM','rail').pts)<1e-6);
+});
+
+test('carts, trains, blocks and guards are drawn with their numbers and labels',()=>{
+  const texts=[],g=fakeCtx();g.fillText=function(t){texts.push(t)};
+  region.init({cols:{MM:'#5b86d6',CR:'#e2b21f',BN:'#d4574c',TR:'#7fb069'},makeCanvas:()=>({getContext:fakeCtx})});
+  resize(1440,900);cam.z=cam.minZ;cam.x=RW/2;cam.y=RH/2;
+  region.draw(g,{sel:'BN',clock:2,
+    units:[{kind:'cart',prov:'BN',d:300,n:30},{kind:'train',prov:'TR',d:400,n:120}],
+    blocks:[{id:'snowMM',label:'viscol'}],guards:[{prov:'CR',kind:'road'},{prov:'MM',kind:'rail'}]});
+  for(const t of ['30','120','viscol'])assert.ok(texts.includes(t),`${t} in ${texts}`);
+  // the same frame without journeys draws none of them
+  const bare=[],g2=fakeCtx();g2.fillText=function(t){bare.push(t)};
+  region.draw(g2,{sel:'BN'});
+  assert.ok(!bare.includes('30')&&!bare.includes('120')&&!bare.includes('viscol'));
+});
+
+test('a cart follows the road and a train the rail, even where the two differ',()=>{
+  const cart=region.unitWorld({kind:'cart',prov:'BN',d:300}),train=region.unitWorld({kind:'train',prov:'BN',d:300});
+  assert.ok(geo.distToPath(cart.x,cart.y,geo.routePath('BN','road').pts)<1e-6);
+  assert.ok(geo.distToPath(cart.x,cart.y,geo.routePath('BN','rail').pts)>5);
+  assert.ok(geo.distToPath(train.x,train.y,geo.routePath('BN','rail').pts)<1e-6);
+});
+
+// a context that counts every call, so a test can tell what was drawn
+function countingCtx(){
+  const calls={},target={measureText:t=>({width:String(t).length*7}),globalAlpha:1};
+  const g=new Proxy(target,{get:(o,k)=>k in o?o[k]:(()=>{calls[k]=(calls[k]||0)+1}),set:(o,k,v)=>{o[k]=v;return true}});
+  return{g,calls};
+}
+
+test('guards, carts, trains and blocks each leave their marks, and the canvas is left as it was found',()=>{
+  resize(1440,900);cam.z=cam.minZ;cam.x=RW/2;cam.y=RH/2;
+  const draw=opts=>{const {g,calls}=countingCtx();g.globalAlpha=.4;region.draw(g,{sel:'BN',...opts});return{g,calls}};
+  const bare=draw({}).calls;
+  assert.equal(draw({guards:[{prov:'CR',kind:'road'}]}).calls.stroke,bare.stroke+1);
+  const cart=draw({units:[{kind:'cart',prov:'BN',d:300,n:30}]}).calls;
+  assert.ok(cart.fillRect>bare.fillRect&&cart.fill>bare.fill);
+  const train=draw({units:[{kind:'train',prov:'TR',d:400,n:120}]}).calls;
+  assert.ok(train.fillRect>bare.fillRect&&train.arc>=bare.arc+4,'a locomotive and four puffs of smoke');
+  const block=draw({blocks:[{id:'coalE',label:'fără cărbune'}]}).calls;
+  assert.ok(block.arc>bare.arc&&block.stroke>bare.stroke);
+  const all=draw({units:[{kind:'cart',prov:'MM',d:100,n:30},{kind:'train',prov:'CR',d:100,n:120}],blocks:[{id:'snowMM',label:'viscol'}],guards:[{prov:'MM',kind:'rail'}]});
+  assert.equal(all.calls.save,all.calls.restore);
+  assert.equal(all.g.globalAlpha,.4);
+});
+
+test('a block for an event with no place on the region is skipped, not drawn',()=>{
+  const {g}=countingCtx();
+  assert.doesNotThrow(()=>region.draw(g,{blocks:[{id:'bridgeTR',label:'pod aglomerat'}]}));
+});
+
+test('the smoke trail keeps its size on the screen at every zoom',()=>{
+  for(const k of [1,6]){
+    resize(1440,900);cam.z=cam.minZ*k;
+    const u={kind:'train',prov:'TR',d:500,n:120},q=region.unitWorld(u);
+    cam.x=q.x;cam.y=q.y;
+    const puffs=[],g=fakeCtx();
+    g.arc=(x,y,r)=>{if([1,2,3,4].some(i=>Math.abs(r-(2.4+i*1.1))<1e-9))puffs.push([x,y])};
+    region.draw(g,{units:[u]});
+    assert.equal(puffs.length,4,`${k}× puffs`);
+    const [ux,uy]=toScreen(q.x,q.y);
+    for(const [x,y] of puffs)assert.ok(Math.hypot(x-ux,y-uy)<70,`${k}×: ${Math.hypot(x-ux,y-uy)}`);
+  }
+});
