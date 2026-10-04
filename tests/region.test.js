@@ -36,6 +36,17 @@ test('zoom stops at 6× the widest view and keeps the point under the cursor',()
   assert.ok(near(cam.z,cam.minZ));
 });
 
+test('home goes back to the widest view with the whole region in sight, on a phone and on a desktop',()=>{
+  for(const [w,h] of [[390,844],[1440,900],[780,360]]){
+    resize(w,h);cam.z=cam.minZ*4;cam.x=300;cam.y=300;
+    region.home();
+    assert.ok(near(cam.z,cam.minZ),`${w}×${h} zoom`);
+    assert.ok(RW*cam.z<=w+1e-9&&RH*cam.z<=h+1e-9,`${w}×${h} shows it all`);
+    assert.ok(near(cam.x,RW/2)&&near(cam.y,RH/2),`${w}×${h} centred`);
+  }
+});
+
+
 test('panning never loses the map: at most 90 px past its edge',()=>{
   resize(1440,900);cam.z=cam.minZ*3;
   pan(1e6,1e6);
@@ -92,6 +103,7 @@ test('info cards give the official 1918 name and say the outlines are approximat
   assert.equal(ai.title,'Alba Iulia');
   assert.match(ai.text,/Gyulafehérvár/);
   assert.match(ai.text,/Marea Adunare/);
+  assert.match(ai.text,/Apropie-te de oraș/);
   assert.match(region.info({kind:'town',key:'arad'}).text,/tot Arad/);
   const tm=region.info({kind:'town',key:'timisoara'}).text;
   assert.match(tm,/cel maghiar, Temesvár/);

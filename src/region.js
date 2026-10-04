@@ -30,6 +30,8 @@ function zoomAt(sx,sy,f){
   cam.z=clamp(cam.z*f,cam.minZ,cam.minZ*MAXK);
   cam.x=wx-(sx-vw/2)/cam.z;cam.y=wy-(sy-vh/2)/cam.z;clampCam();
 }
+// back to the widest view, with all four provinces
+function home(){cam.z=cam.minZ;cam.x=RW/2;cam.y=RH/2;clampCam()}
 const toScreen=(x,y)=>[(x-cam.x)*cam.z+vw/2,(y-cam.y)*cam.z+vh/2];
 
 /* ---------- projected shapes ---------- */
@@ -130,14 +132,14 @@ const {QUOTAS}=core;
 function info({kind,key}){
   if(kind==='town'){const t=TOWNS[key];
     const name=t.official===t.name?`Numele oficial din 1918 era tot ${t.name}.`:`În 1918, numele oficial era cel maghiar, ${t.official}.`;
-    const extra=key==='albaIulia'?' Aici se va ține Marea Adunare Națională, pe 1 decembrie. Atinge „Oraș” ca să vezi cetatea.':'';
+    const extra=key==='albaIulia'?' Aici se va ține Marea Adunare Națională, pe 1 decembrie. Apropie-te de oraș sau atinge „Oraș” ca să intri în cetate.':'';
     return{eyebrow:'Harta regiunii · noiembrie 1918',title:t.name,text:name+extra}}
   const l=LABELS.find(x=>x.prov===key);
   return{eyebrow:'Provincie istorică',title:l.name,text:`Din ${l.name} vin la Alba Iulia ${QUOTAS[key]} de delegați. Conturul de pe hartă e aproximativ: arată regiunea istorică, nu o graniță administrativă.`};
 }
 
 /* ---------- export ---------- */
-const region={cam,resize,pan,zoomAt,toScreen,MAXK,ROADS,RAILS,init,draw,visibleTowns,TIER2,hit,info};
+const region={cam,resize,pan,zoomAt,home,toScreen,MAXK,ROADS,RAILS,init,draw,visibleTowns,TIER2,hit,info};
 DSU.region=region;
 if(typeof module!=='undefined'&&module.exports)module.exports=region;
 })(typeof window!=='undefined'?window:globalThis);
