@@ -1,6 +1,7 @@
 (()=>{
 const {W,H,RATE,DEADLINE,QUOTAS,TOTAL,clamp,fmt,mkPath,at,clockParts,clockText,scoreFor}=DSU.core;
 const save=DSU.save,audio=DSU.audio,R=DSU.region;
+const {routePath,EVENT_PLACES,regionSpeed,stopDistance,advance}=DSU.geo;
 const BGS=1.4;
 const $=id=>document.getElementById(id);
 const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -163,7 +164,7 @@ function stamp(n){for(let i=0;i<n&&spotIdx<spots.length;i++){const s=spots[spotI
 let S,rt=0,speed=1,paused=false,modalOpen=false;
 function newState(){
   const s={t:0,prov:120,infl:60,moral:70,del:{MM:0,CR:0,BN:0,TR:0},sent:{MM:0,CR:0,BN:0,TR:0},crowd:0,
-    walkers:[],trains:[],blocks:{},guards:{},sel:'TR',nextEvent:16,running:false,over:false,facts:[],recent:[],spont:0,firstTrain:false,negotiated:false,half:false,trainBonus:{}};
+    walkers:[],trains:[],convoys:[],blocks:{},guards:{},sel:'TR',nextEvent:16,running:false,over:false,facts:[],recent:[],spont:0,firstTrain:false,negotiated:false,half:false,trainBonus:{}};
   return s;
 }
 const smoke=[];const flakes=[];
@@ -173,10 +174,21 @@ function blockKeyRoad(p){return 'road:'+p}
 function blockKeyRail(p){return 'rail:'+PROV[p].rail}
 function isBlocked(k){return !!S.blocks[k]}
 function isGuarded(k){return (S.guards[k]||0)>rt}
+// the stop distance of a unit on prov:kind for the block under this key, or Infinity when nothing holds it on the region
+function blockStop(key,prov,kind){const b=S.blocks[key];return b?stopDistance(b.id,prov,kind):Infinity}
+// blocks that hold units in the city: the events that have no place on the region (the bridge over the Ampoi)
+function cityBlocked(k){const b=S.blocks[k];return !!b&&!EVENT_PLACES[b.id]}
 
 function addWalker(path,opts){S.walkers.push(Object.assign({path,d:0,lat:(Math.random()-.5)*7,sp:21+Math.random()*6,col:pick(CLOTH),hat:Math.random()<.45,flag:Math.random()<.07,people:100,del:0,prov:null,kind:'p',block:null,state:'walk'},opts))}
 
 /* ---------- actions ---------- */
+const CONVOY=24; // walkers (100 people each) that follow a cart once it reaches the city
+// what the city sees when a delegation reaches Alba Iulia: a cart and its crowd at the start of the city road
+function spawnConvoy(p,n){
+  const path=P[PROV[p].road],key=blockKeyRoad(p);
+  addWalker(path,{kind:'cart',d:0,lat:0,sp:20,del:n,people:0,prov:p,block:key});
+  for(let i=0;i<CONVOY;i++)addWalker(path,{d:-8-i*7-Math.random()*4,prov:p,block:key,people:100,flag:Math.random()<.14});
+}
 function remaining(p){return PROV[p].quota-S.sent[p]}
 function sendDelegation(){
   const p=S.sel,pr=PROV[p];
@@ -184,9 +196,7 @@ function sendDelegation(){
   if(isBlocked(blockKeyRoad(p)))return toast(`Drumul din ${pr.name} e blocat. Negociază sau protejează traseul.`,'bad');
   if(S.infl<12)return toast('Nu ai destulă Influență. Așteaptă sau adu delegați ca să crească moralul.','bad');
   S.infl-=12;const n=Math.min(30,remaining(p));S.sent[p]+=n;
-  const path=P[pr.road],key=blockKeyRoad(p);
-  addWalker(path,{kind:'cart',d:0,lat:0,sp:20,del:n,people:0,prov:p,block:key});
-  const k=24;for(let i=0;i<k;i++)addWalker(path,{d:-8-i*7-Math.random()*4,prov:p,block:key,people:100,flag:Math.random()<.14});
+  S.convoys.push({prov:p,n,d:0,people:CONVOY*100}); // it travels the region first; spawnConvoy takes over at Alba Iulia
   toast(`O delegație de <b>${n}</b> pleacă din ${pr.name}.`);
   flash('aDel');
 }
@@ -198,7 +208,7 @@ function organizeTrain(){
   if(S.prov<45)return toast('Nu ai destule Provizii pentru un tren special.','bad');
   S.prov-=45;const n=Math.min(120,remaining(p));S.sent[p]+=n;
   const bonus=S.trainBonus[side]||0;S.trainBonus[side]=0;
-  S.trains.push({side,path:side==='W'?P.railW:P.railE,d:0,state:'run',n,people:6500+bonus,prov:p,unload:0,alpha:1,cars:6,smokeT:0});
+  S.trains.push({side,path:side==='W'?P.railW:P.railE,d:0,rd:0,state:'region',n,people:6500+bonus,prov:p,unload:0,alpha:1,cars:6,smokeT:0});
   toast(`Tren special cu <b>${n}</b> delegați din ${pr.name} pe ruta ${pr.via}.`);audio.whistle();
   flash('aTrain');
 }
@@ -251,7 +261,7 @@ function eligible(ev){
 function triggerEvent(){
   const list=EVENTS.filter(eligible);if(!list.length)return;
   const ev=pick(list);S.recent.push(ev.id);if(S.recent.length>4)S.recent.shift();
-  if(ev.target)S.blocks[ev.target]={until:Infinity,label:ev.short};
+  if(ev.target)S.blocks[ev.target]={until:Infinity,label:ev.short,id:ev.id};
   showEvent(ev);
 }
 function canPay(c){return !c||((c.prov||0)<=S.prov&&(c.infl||0)<=S.infl)}
@@ -327,16 +337,23 @@ function update(dt){
   S.spont+=dt*(.45+S.moral/110);
   while(S.spont>=1){S.spont-=1;const p=pick(PKEYS);const key=blockKeyRoad(p);if(!isBlocked(key))addWalker(P[PROV[p].road],{prov:p,block:key,people:100})}
   const spd=.7+S.moral/250;
+  // regional segment: carts follow the geo road and stop short of a block placed on it; at Alba Iulia the city takes over
+  for(let i=S.convoys.length-1;i>=0;i--){const c=S.convoys[i],key=blockKeyRoad(c.prov);
+    c.d=advance(c.d,regionSpeed('road',spd,isGuarded(key))*dt,blockStop(key,c.prov,'road'));
+    if(c.d>=routePath(c.prov,'road').len){spawnConvoy(c.prov,c.n);S.convoys.splice(i,1)}}
   for(let i=S.walkers.length-1;i>=0;i--){const w=S.walkers[i];
     if(w.state==='settle'){w.st+=dt/1.1;w.x=w.fx+(w.tx-w.fx)*Math.min(1,w.st);w.y=w.fy+(w.ty-w.fy)*Math.min(1,w.st);
       if(w.st>=1){S.crowd+=w.people;stamp(Math.round(w.people/PER_STAMP));S.walkers.splice(i,1)}continue}
-    const blocked=w.block&&isBlocked(w.block)&&w.d>w.path.len*.04&&w.d<w.path.len*.24;
+    const blocked=w.block&&cityBlocked(w.block)&&w.d>w.path.len*.04&&w.d<w.path.len*.24;
     if(!blocked){const g=w.block&&isGuarded(w.block)?1.4:1;w.d+=w.sp*spd*g*dt}
     const q=at(w.path,Math.max(0,w.d));w.x=q.x-Math.sin(q.ang)*w.lat;w.y=q.y+Math.cos(q.ang)*w.lat;w.dir=Math.cos(q.ang)>=0?1:-1;
     if(w.d>=w.path.len){if(arrive(w))S.walkers.splice(i,1)}
   }
   for(let i=S.trains.length-1;i>=0;i--){const t=S.trains[i];
-    if(t.state==='run'){const blk=isBlocked('rail:'+t.side)&&t.d<t.path.len*.8;if(!blk)t.d+=(isGuarded('rail:'+t.side)?92:70)*dt*spd;
+    if(t.state==='region'){const key=blockKeyRail(t.prov);
+      t.rd=advance(t.rd,regionSpeed('rail',spd,isGuarded(key))*dt,blockStop(key,t.prov,'rail'));
+      if(t.rd>=routePath(t.prov,'rail').len){t.state='run';t.d=0}}
+    else if(t.state==='run'){const blk=cityBlocked('rail:'+t.side)&&t.d<t.path.len*.8;if(!blk)t.d+=(isGuarded('rail:'+t.side)?92:70)*dt*spd;
       t.smokeT-=dt;if(t.smokeT<=0&&!blk){t.smokeT=.07;const h=at(t.path,t.d);smoke.push({x:h.x,y:h.y-14,vx:(Math.random()-.5)*6,vy:-10-Math.random()*6,r:2.5,life:1})}
       if(t.d>=t.path.len){t.d=t.path.len;t.state='unload';t.unload=0;t.spawned=0;audio.whistle();if(!S.firstTrain){S.firstTrain=true;unlock('train')}}}
     else if(t.state==='unload'){t.unload+=dt;const total=Math.round(t.people/100);const want=Math.min(total,Math.floor(t.unload/2.6*total));
@@ -412,10 +429,19 @@ function draw(){
   ctx.setTransform(dpr,0,0,dpr,0,0);
   // mid-fade both maps are drawn; the region goes on top with its opacity
   if(regionA<1)drawCity();
-  if(regionA>0){ctx.globalAlpha=regionA;R.draw(ctx,{sel:S?S.sel:null,clock});ctx.globalAlpha=1}
+  if(regionA>0){ctx.globalAlpha=regionA;R.draw(ctx,{sel:S?S.sel:null,clock,...journeyView()});ctx.globalAlpha=1}
   // snowfall + vignette
   if(!reduceMotion){ctx.fillStyle='rgba(255,255,255,.75)';for(const f of flakes){const x=((f.x+Math.sin(clock*.6+f.p)*.01)%1)*vw,y=f.y*vh;ctx.beginPath();ctx.arc(x,y,f.r,0,7);ctx.fill()}}
   const vg=ctx.createRadialGradient(vw/2,vh/2,Math.min(vw,vh)*.35,vw/2,vh/2,Math.max(vw,vh)*.75);vg.addColorStop(0,'rgba(20,16,10,0)');vg.addColorStop(1,'rgba(20,16,10,.45)');ctx.fillStyle=vg;ctx.fillRect(0,0,vw,vh);
+}
+// what the region draws of the game: carts and trains on their routes, and the routes the Guards watch
+function journeyView(){
+  if(!S)return{};
+  const units=[],guards=[];
+  for(const c of S.convoys)units.push({kind:'cart',prov:c.prov,d:c.d,n:c.n});
+  for(const t of S.trains)if(t.state==='region')units.push({kind:'train',prov:t.prov,d:t.rd,n:t.n});
+  for(const p of PKEYS){if(isGuarded(blockKeyRoad(p)))guards.push({prov:p,kind:'road'});if(isGuarded(blockKeyRail(p)))guards.push({prov:p,kind:'rail'})}
+  return{units,guards};
 }
 function drawCity(){
   ctx.fillStyle='#2a261f';ctx.fillRect(0,0,vw,vh);
@@ -428,7 +454,7 @@ function drawCity(){
     strokeWorld((sel.rail==='W'?P.railW:P.railE).pts,4,'rgba(236,208,138,.4)',[8,6],-clock*20);
     for(const p of PKEYS){for(const k of [blockKeyRoad(p),blockKeyRail(p)]){if(isGuarded(k)){const path=k.startsWith('road')?P[PROV[p].road]:(PROV[p].rail==='W'?P.railW:P.railE);strokeWorld(path.pts,10,`rgba(80,130,220,${.28+Math.sin(clock*4)*.1})`)}}}
     ctx.drawImage(crowdL,0,0,W,H);
-    for(const t of S.trains){ctx.globalAlpha=Math.max(0,t.alpha);
+    for(const t of S.trains){if(t.state==='region')continue;ctx.globalAlpha=Math.max(0,t.alpha);
       for(let c=t.cars;c>=0;c--){const q=at(t.path,t.d-c*21);ctx.save();ctx.translate(q.x,q.y-3);ctx.rotate(q.ang);
         if(c===0){ctx.fillStyle='#1c1a18';ctx.fillRect(-10,-4.5,20,9);ctx.fillStyle='#2b2724';ctx.fillRect(-10,-4.5,7,9);ctx.fillStyle='#7a2a20';ctx.fillRect(-10,3,20,1.5);
           ctx.fillStyle='#111';ctx.fillRect(6,-2,3,4);}
@@ -441,7 +467,7 @@ function drawCity(){
       if(w.kind==='cart')cart(ctx,w.x,w.y,w.dir,clock);
       else{const bob=w.state==='settle'?0:Math.abs(Math.sin(w.d*.45))*.5;person(ctx,w.x,w.y-bob,w.col,w.hat,w.flag,1.3)}}
     // blocked markers
-    for(const k in S.blocks){const [kind,id]=k.split(':');let path;
+    for(const k in S.blocks){if(!cityBlocked(k))continue;const [kind,id]=k.split(':');let path;
       if(kind==='road')path=P[PROV[id].road];else path=id==='W'?P.railW:P.railE;
       const q=at(path,path.len*(kind==='road'?.25:.5));const r=9;
       ctx.fillStyle='rgba(179,48,42,.92)';ctx.beginPath();ctx.arc(q.x,q.y-12,r,0,7);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;
@@ -452,7 +478,7 @@ function drawCity(){
   ctx.restore();
   // labels (screen size)
   labelHits=[];if(!cine)for(const l of LANDMARKS)drawLabel(l);
-  if(S&&!cine)for(const k in S.blocks){const [kind,id]=k.split(':');let path;if(kind==='road')path=P[PROV[id].road];else path=id==='W'?P.railW:P.railE;const q=at(path,path.len*(kind==='road'?.25:.5));
+  if(S&&!cine)for(const k in S.blocks){if(!cityBlocked(k))continue;const [kind,id]=k.split(':');let path;if(kind==='road')path=P[PROV[id].road];else path=id==='W'?P.railW:P.railE;const q=at(path,path.len*(kind==='road'?.25:.5));
     drawLabel({t:S.blocks[k].label,x:q.x,y:q.y-34,small:1})}
 }
 
@@ -526,6 +552,9 @@ function endGame(){
   // everyone still on the roads joins the crowd, so the field is full for the finale
   for(const w of S.walkers)if(w.people>0){S.crowd+=w.people;stamp(Math.round(w.people/PER_STAMP))}
   S.walkers=[];
+  // carts still on the region join the crowd too, as they did when they were walking the city road
+  for(const c of S.convoys){S.crowd+=c.people;stamp(Math.round(c.people/PER_STAMP))}
+  S.convoys=[];
   const {medals,verdict}=scoreFor(tot);
   S.result={tot,crowd:S.crowd,medals,verdict};
   save.recordResult({delegates:tot,crowd:S.crowd,medals});audio.bells('ending');
@@ -582,7 +611,7 @@ function tickAudio(){
   if(!S)return;
   if(!audio.available)$('btnSound').hidden=true;
   audio.ambience({crowd:S.crowd,running:!paused});
-  audio.chuff(S.running&&!paused&&!modalOpen&&S.trains.some(t=>t.state==='run'));
+  audio.chuff(S.running&&!paused&&!modalOpen&&S.trains.some(t=>t.state==='run'||t.state==='region'));
 }
 
 /* ---------- loop ---------- */
