@@ -144,3 +144,25 @@ test('the push fades when the player stops zooming',()=>{
   assert.equal(p.push,0);
   assert.equal(p.overscroll(step),false);
 });
+
+test('something that happens on the level you are not looking at leaves a mark until you go there',()=>{
+  const p=create();
+  assert.equal(p.attention,null);
+  assert.equal(p.notify('region'),false);assert.equal(p.attention,null); // already looking at it
+  assert.equal(p.notify('city'),true);assert.equal(p.attention,'city');
+  p.go('city');assert.equal(p.attention,null);
+});
+
+test('the mark follows where the player is going, not where they are',()=>{
+  const p=create();p.go('city');p.update(.1);
+  assert.equal(p.notify('city'),false);   // heading there
+  assert.equal(p.notify('region'),true);  // leaving it behind
+  fly(p,FLIGHT);
+  assert.equal(p.level,'city');assert.equal(p.attention,'region');
+  p.go('region');assert.equal(p.attention,null);
+});
+
+test('a new game clears the mark',()=>{
+  const p=create();p.notify('city');p.reset('region');
+  assert.equal(p.attention,null);
+});
