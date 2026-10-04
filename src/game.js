@@ -108,8 +108,9 @@ function stepLevel(dt){
 // the button and the canvas name follow where the player is going
 function levelUI(){
   const city=portal.target==='city',b=$('btnLevel');
-  b.querySelector('span').textContent=city?'Regiune':'Oraș';
-  b.setAttribute('aria-label',city?'Arată harta regiunii':'Arată orașul Alba Iulia');
+  b.querySelector('span:not(.dot)').textContent=city?'Regiune':'Oraș';
+  b.classList.toggle('new',!!portal.attention); // the dot: something happened on the level the player is not looking at
+  b.setAttribute('aria-label',(city?'Arată harta regiunii':'Arată orașul Alba Iulia')+(portal.attention?' · s-a întâmplat ceva acolo':''));
   canvas.setAttribute('aria-label',city?'Harta Alba Iulia, 30 noiembrie 1918':'Harta regiunii, 30 noiembrie 1918');
 }
 levelUI();
@@ -164,7 +165,7 @@ function stamp(n){for(let i=0;i<n&&spotIdx<spots.length;i++){const s=spots[spotI
 let S,rt=0,speed=1,paused=false,modalOpen=false;
 function newState(){
   const s={t:0,prov:120,infl:60,moral:70,del:{MM:0,CR:0,BN:0,TR:0},sent:{MM:0,CR:0,BN:0,TR:0},crowd:0,
-    walkers:[],trains:[],convoys:[],blocks:{},guards:{},sel:'TR',nextEvent:16,running:false,over:false,facts:[],recent:[],spont:0,firstTrain:false,negotiated:false,half:false,trainBonus:{}};
+    walkers:[],trains:[],convoys:[],blocks:{},marks:{},guards:{},sel:'TR',nextEvent:16,running:false,over:false,facts:[],recent:[],spont:0,firstTrain:false,negotiated:false,half:false,trainBonus:{}};
   return s;
 }
 const smoke=[];const flakes=[];
@@ -249,7 +250,7 @@ const EVENTS=[
   choices:[{t:'Organizează cazarea și masa',cost:{prov:10},moral:10,after:'Oaspeții au unde să doarmă. Moral +10.'},{t:'Lasă-i să se descurce singuri',moral:3,after:'Oamenii își găsesc singuri adăpost.'}]},
  {id:'neighbors',target:null,stamp:'Întâlnire · în oraș',title:'Vecinii întreabă',text:'Vecini sași și maghiari din oraș vor să știe ce se va hotărî la Adunare și ce se întâmplă cu drepturile lor.',
   choices:[{t:'Explică-le principiile rezoluției',cost:{infl:5},infl:20,moral:3,fact:'art3',after:'Discuția aduce încredere. Influență +20.'},{t:'Nu e timp de explicații',infl:-5,after:'Neîncrederea rămâne.'}]},
- {id:'overfull',target:null,stamp:'Telegramă · gara Arad',title:'Trenurile sunt supraaglomerate',text:'La Arad, oamenii urcă și pe acoperișurile vagoanelor ca să prindă trenul spre Alba Iulia.',
+ {id:'overfull',target:null,short:'aglomerat',stamp:'Telegramă · gara Arad',title:'Trenurile sunt supraaglomerate',text:'La Arad, oamenii urcă și pe acoperișurile vagoanelor ca să prindă trenul spre Alba Iulia.',
   choices:[{t:'Adaugă vagoane la următorul tren',cost:{prov:20},bonusW:3000,after:'Următorul tren dinspre Deva aduce 3.000 de oameni în plus.'},{t:'Oprește urcarea pe acoperiș',moral:-3,after:'Trenul pleacă mai sigur, dar cu mai puțini oameni.'}]},
 ];
 function eligible(ev){
@@ -262,6 +263,9 @@ function triggerEvent(){
   const list=EVENTS.filter(eligible);if(!list.length)return;
   const ev=pick(list);S.recent.push(ev.id);if(S.recent.length>4)S.recent.shift();
   if(ev.target)S.blocks[ev.target]={until:Infinity,label:ev.short,id:ev.id};
+  else if(EVENT_PLACES[ev.id])S.marks[ev.id]={until:rt+20,label:ev.short}; // a marker only: it holds nobody up
+  // something happened on the region while the player is looking at the city
+  if(EVENT_PLACES[ev.id]&&portal.notify('region'))levelUI();
   showEvent(ev);
 }
 function canPay(c){return !c||((c.prov||0)<=S.prov&&(c.infl||0)<=S.infl)}
@@ -321,8 +325,10 @@ function toast(html,kind=''){const box=$('toasts');const d=document.createElemen
   while(box.children.length>3)box.firstChild.remove();setTimeout(()=>d.remove(),kind==='fact'?6000:3800);return d}
 
 /* ---------- update ---------- */
+// something arrived in the city while the player is looking at the region
+function noteCity(){if(portal.notify('city'))levelUI()}
 function arrive(w){
-  if(w.kind==='cart'){S.del[w.prov]+=w.del;S.moral=Math.min(100,S.moral+3);toast(`Au sosit <b>${w.del}</b> delegați din ${PROV[w.prov].name}.`,'good');return true}
+  if(w.kind==='cart'){noteCity();S.del[w.prov]+=w.del;S.moral=Math.min(100,S.moral+3);toast(`Au sosit <b>${w.del}</b> delegați din ${PROV[w.prov].name}.`,'good');return true}
   if(w.del){S.del[w.prov]+=w.del;S.moral=Math.min(100,S.moral+5);toast(`Trenul a adus <b>${w.del}</b> delegați din ${PROV[w.prov].name}.`,'good')}
   if(w.people>0&&spotIdx<spots.length){const s=spots[Math.min(spotIdx,spots.length-1)];w.state='settle';w.fx=w.x;w.fy=w.y;w.tx=s.x;w.ty=s.y;w.st=0;return false}
   S.crowd+=w.people;return true;
@@ -333,6 +339,7 @@ function update(dt){
   const mf=.55+S.moral/150;
   S.prov=Math.min(400,S.prov+2.1*mf*dt);S.infl=Math.min(250,S.infl+1.05*mf*dt);S.moral=clamp(S.moral-.13*dt,0,100);
   for(const k in S.blocks)if(S.blocks[k].until<=rt){delete S.blocks[k];toast('Un traseu s-a eliberat.','good')}
+  for(const k in S.marks)if(S.marks[k].until<=rt)delete S.marks[k];
   // spontaneous crowds
   S.spont+=dt*(.45+S.moral/110);
   while(S.spont>=1){S.spont-=1;const p=pick(PKEYS);const key=blockKeyRoad(p);if(!isBlocked(key))addWalker(P[PROV[p].road],{prov:p,block:key,people:100})}
@@ -355,7 +362,7 @@ function update(dt){
       if(t.rd>=routePath(t.prov,'rail').len){t.state='run';t.d=0}}
     else if(t.state==='run'){const blk=cityBlocked('rail:'+t.side)&&t.d<t.path.len*.8;if(!blk)t.d+=(isGuarded('rail:'+t.side)?92:70)*dt*spd;
       t.smokeT-=dt;if(t.smokeT<=0&&!blk){t.smokeT=.07;const h=at(t.path,t.d);smoke.push({x:h.x,y:h.y-14,vx:(Math.random()-.5)*6,vy:-10-Math.random()*6,r:2.5,life:1})}
-      if(t.d>=t.path.len){t.d=t.path.len;t.state='unload';t.unload=0;t.spawned=0;audio.whistle();if(!S.firstTrain){S.firstTrain=true;unlock('train')}}}
+      if(t.d>=t.path.len){noteCity();t.d=t.path.len;t.state='unload';t.unload=0;t.spawned=0;audio.whistle();if(!S.firstTrain){S.firstTrain=true;unlock('train')}}}
     else if(t.state==='unload'){t.unload+=dt;const total=Math.round(t.people/100);const want=Math.min(total,Math.floor(t.unload/2.6*total));
       while(t.spawned<want){t.spawned++;addWalker(P.walk,{d:-Math.random()*10,prov:t.prov,people:100,del:t.spawned===Math.ceil(total*.6)?t.n:0,flag:Math.random()<.1})}
       if(t.unload>2.8){t.state='leave'}}
@@ -441,7 +448,10 @@ function journeyView(){
   for(const c of S.convoys)units.push({kind:'cart',prov:c.prov,d:c.d,n:c.n});
   for(const t of S.trains)if(t.state==='region')units.push({kind:'train',prov:t.prov,d:t.rd,n:t.n});
   for(const p of PKEYS){if(isGuarded(blockKeyRoad(p)))guards.push({prov:p,kind:'road'});if(isGuarded(blockKeyRail(p)))guards.push({prov:p,kind:'rail'})}
-  return{units,guards};
+  const blocks=[];
+  for(const k in S.blocks){const b=S.blocks[k];if(EVENT_PLACES[b.id])blocks.push({id:b.id,label:b.label})}
+  for(const id in S.marks)blocks.push({id,label:S.marks[id].label});
+  return{units,guards,blocks};
 }
 function drawCity(){
   ctx.fillStyle='#2a261f';ctx.fillRect(0,0,vw,vh);

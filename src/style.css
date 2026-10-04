@@ -62,7 +62,10 @@ button:focus-visible{outline:2px solid var(--brass-hi);outline-offset:2px}
 .tool .dot{width:7px;height:7px;border-radius:50%;background:var(--yellow);display:none}
 .tool.new .dot{display:block}
 /* the level button keeps one width, so switching Regiune / Oraș does not move the buttons next to it */
-#btnLevel span{min-width:3.4em;text-align:center}
+#btnLevel span:not(.dot){min-width:3.4em;text-align:center}
+#btnLevel{position:relative}
+/* the dot sits in the corner, so showing it does not move the buttons next to it */
+#btnLevel .dot{position:absolute;top:4px;right:4px}
 .spacer{flex:1}
 
 .bottom{display:flex;flex-direction:column;gap:8px}
