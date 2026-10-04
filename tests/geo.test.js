@@ -176,3 +176,65 @@ test('the located events are the ones the spec places on the region',()=>{
   assert.equal(EVENT_PLACES.coalE.town,'teius');
   assert.equal(EVENT_PLACES.gardaW.town,'deva');
 });
+
+const {GUARD_BOOST,regionSpeed,STOP_GAP,alongPath,stopDistance,advance}=geo;
+const idx=(prov,kind,town)=>ROUTES[prov][kind].indexOf(town);
+
+test('regionSpeed matches regionTime, and guards speed units up',()=>{
+  for(const p of PROVS)for(const kind of ['road','rail'])
+    assert.ok(near(routePath(p,kind).len/regionSpeed(kind,SPD70,false),regionTime(p,kind,SPD70)),`${p} ${kind}`);
+  assert.equal(regionSpeed('road',1,true),SPEED.road*1.4);
+  assert.ok(near(regionSpeed('rail',1,true),SPEED.rail*92/70));
+  assert.equal(GUARD_BOOST.road,1.4);
+});
+
+test('alongPath measures where on a route the closest point is',()=>{
+  const path=geo.routePath('BN','rail');
+  assert.ok(near(alongPath(path,...townXY('arad')),path.L[idx('BN','rail','arad')],1e-6));
+  assert.equal(alongPath(path,...townXY('timisoara')),0);
+  assert.ok(near(alongPath(path,...townXY('albaIulia')),path.len,1e-6));
+  // a point beside the route projects onto it
+  const [x,y]=townXY('deva');assert.ok(near(alongPath(path,x,y-30),path.L[idx('BN','rail','deva')],40));
+});
+
+test('units stop just before the place of an event on their own route',()=>{
+  const at=(prov,kind,town)=>routePath(prov,kind).L[idx(prov,kind,town)];
+  assert.ok(near(stopDistance('coalE','MM','rail'),at('MM','rail','teius')-STOP_GAP,1e-6));
+  assert.ok(near(stopDistance('coalE','CR','rail'),at('CR','rail','teius')-STOP_GAP,1e-6));
+  assert.ok(near(stopDistance('gardaW','BN','rail'),at('BN','rail','deva')-STOP_GAP,1e-6));
+  // between two towns: the stop is STOP_GAP before the place, and on the stretch that leads to it
+  const snow=stopDistance('snowMM','CR','road'),snowAt=alongPath(routePath('CR','road'),...geo.placeXY('snowMM'));
+  assert.ok(near(snow,snowAt-STOP_GAP,1e-6)&&snowAt>at('CR','road','campeni')&&snowAt<at('CR','road','abrud'));
+  assert.ok(snow>at('CR','road','vascau'));
+  const jam=stopDistance('jamBN','BN','road'),jamAt=alongPath(routePath('BN','road'),...geo.placeXY('jamBN'));
+  assert.ok(near(jam,jamAt-STOP_GAP,1e-6)&&jamAt>at('BN','road','orastie')&&jamAt<at('BN','road','vintu'));
+  assert.ok(jam>at('BN','road','orastie'));
+});
+
+test('a train whose line does not pass the place stops at the junction of the line',()=>{
+  const tr=routePath('TR','rail');
+  assert.ok(near(stopDistance('gardaW','TR','rail'),tr.L[idx('TR','rail','vintu')]-STOP_GAP,1e-6));
+  assert.ok(stopDistance('gardaW','TR','rail')<tr.len);
+});
+
+test('events without a place on the region, or off the unit\'s route, never stop it',()=>{
+  assert.equal(stopDistance('bridgeTR','MM','road'),Infinity);
+  assert.equal(stopDistance('rumor','TR','road'),Infinity);
+  assert.equal(stopDistance('snowMM','MM','road'),Infinity);
+  assert.equal(stopDistance('jamBN','TR','road'),Infinity);
+});
+
+test('every located event stops each of its routes strictly inside the route',()=>{
+  for(const [id,pl] of Object.entries(EVENT_PLACES))for(const r of pl.on){
+    const [prov,kind]=r.split(':'),s=stopDistance(id,prov,kind);
+    assert.ok(s>0&&s<routePath(prov,kind).len,`${id} on ${r}: ${s}`);
+  }
+});
+
+test('advance holds a unit at its stop, but not one that is already past it',()=>{
+  assert.equal(advance(10,5),15);
+  assert.equal(advance(10,5,12),12);   // held at the stop
+  assert.equal(advance(12,5,12),12);   // waits there
+  assert.equal(advance(13,5,12),18);   // already past it
+  assert.equal(advance(12,5,Infinity),17); // the block is gone
+});
