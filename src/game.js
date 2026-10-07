@@ -1,5 +1,5 @@
 (()=>{
-const {W,H,RATE,DEADLINE,QUOTAS,TOTAL,clamp,fmt,mkPath,at,clockParts,clockText,scoreFor}=DSU.core;
+const {W,H,RATE,DEADLINE,QUOTAS,TOTAL,BALANCE,clamp,fmt,mkPath,at,clockParts,clockText,scoreFor}=DSU.core;
 const save=DSU.save,audio=DSU.audio,R=DSU.region;
 const {routePath,EVENT_PLACES,regionSpeed,stopDistance,advance}=DSU.geo;
 const BGS=1.4;
@@ -166,7 +166,7 @@ function stamp(n){for(let i=0;i<n&&spotIdx<spots.length;i++){const s=spots[spotI
 /* ---------- game state ---------- */
 let S,rt=0,speed=1,paused=false,modalOpen=false;
 function newState(){
-  const s={t:0,prov:120,infl:60,moral:70,del:{MM:0,CR:0,BN:0,TR:0},sent:{MM:0,CR:0,BN:0,TR:0},crowd:0,
+  const s={t:0,...BALANCE.start,del:{MM:0,CR:0,BN:0,TR:0},sent:{MM:0,CR:0,BN:0,TR:0},crowd:0,
     walkers:[],trains:[],convoys:[],blocks:{},marks:{},guards:{},sel:'TR',nextEvent:16,running:false,over:false,facts:[],recent:[],spont:0,firstTrain:false,negotiated:false,half:false,trainBonus:{}};
   return s;
 }
@@ -339,7 +339,7 @@ function update(dt){
   if(!S.running)return;
   rt+=dt;S.t+=dt*RATE;
   const mf=.55+S.moral/150;
-  S.prov=Math.min(400,S.prov+2.1*mf*dt);S.infl=Math.min(250,S.infl+1.05*mf*dt);S.moral=clamp(S.moral-.13*dt,0,100);
+  S.prov=Math.min(400,S.prov+BALANCE.regen.prov*mf*dt);S.infl=Math.min(250,S.infl+BALANCE.regen.infl*mf*dt);S.moral=clamp(S.moral-.13*dt,0,100);
   for(const k in S.blocks)if(S.blocks[k].until<=rt){delete S.blocks[k];toast('Un traseu s-a eliberat.','good')}
   for(const k in S.marks)if(S.marks[k].until<=rt)delete S.marks[k];
   // spontaneous crowds

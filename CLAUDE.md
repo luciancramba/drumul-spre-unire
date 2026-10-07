@@ -47,7 +47,7 @@ Unelte de dezvoltare (`npm install` o dată):
 - **Reperele istorice** sunt în `LANDMARKS`: etichete pe hartă, iar la atingere se deschide o fișă (`showLandmark`). La zoom mic, cele secundare apar doar ca puncte.
 - **Mulțimea** de pe Câmpul lui Horea e desenată incremental pe canvasul `crowdL`. `spots` e sortat de la centru spre margine, iar `PER_STAMP` = 25 de oameni pe figurină.
 - **Finalul**: la `DEADLINE`, `endGame` oprește simularea, trece pe câmp pe toți cei încă pe drum (și căruțele rămase pe regiune), salvează rezultatul, ascunde HUD-ul (clasa `cinematic` pe `body`) și pornește `DSU.cinematic`. La sfârșit, `showEnding` deschide cardul cu rezultatele.
-- **Ritmul** (în `core.js`): `RATE` = 7 minute de joc pe secundă reală, `DEADLINE` = 1680 de minute, adică aproximativ 4 minute de joc real. Tot acolo sunt `clockText` și `scoreFor` (pragurile pentru medalii).
+- **Ritmul** (în `core.js`): `RATE` = 7 minute de joc pe secundă reală, `DEADLINE` = 1680 de minute, adică aproximativ 4 minute de joc real. Tot acolo sunt `clockText` și `scoreFor` (pragurile pentru medalii) și `BALANCE` (stocul de pornire și regenerarea Proviziilor și a Influenței, înmulțite în joc cu `.55 + moral/150`). Economia a fost strânsă de la 2,1/1,05 la 1,45/0,75, ca 3 stele să ceară alegeri bune; costurile acțiunilor rămân în `game.js`.
 
 ## Dacă se regenerează harta
 AI-ul nu respectă schița la pixel. După ce pui o hartă nouă, refă coordonatele din `P`, `CIT`, `F`, `FIELD`, `TRIBS`, `STATION`, `ch_list` și `LANDMARKS`, măsurându-le pe imaginea redimensionată la 1600 px lățime.
