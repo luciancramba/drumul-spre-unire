@@ -54,22 +54,27 @@ function edges(kind){
 const ROADS=edges('road'),RAILS=edges('rail');
 
 /* ---------- static layer ---------- */
-const RS=.8; // static layer resolution, in pixels per world unit
-let layer=null,cols={};
+const RS=1; // static layer resolution, in pixels per world unit: the painting's own, 2000×1740
+const VEIL=.18; // paper laid over the painting, so that lines and labels read on it
+let layer=null,cols={},painted=false;
 function poly(g,pts,close=true){g.beginPath();g.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)g.lineTo(pts[i][0],pts[i][1]);if(close)g.closePath()}
 // cols: province colours by key; makeCanvas lets Node tests pass a fake canvas
-function init({cols:c,makeCanvas=()=>document.createElement('canvas')}){
-  cols=c;layer=makeCanvas();
+// image: the painted background; one that failed to load has naturalWidth 0, and the paper stays
+function init({cols:c,makeCanvas=()=>document.createElement('canvas'),image=null}){
+  cols=c;layer=makeCanvas();painted=!!image&&image.naturalWidth>0;
   layer.width=Math.round(RW*RS);layer.height=Math.round(RH*RS);
   const g=layer.getContext('2d');g.setTransform(RS,0,0,RS,0,0);
   g.fillStyle='#e9dcbc';g.fillRect(0,0,RW,RH);
-  // paper grain, seeded so it is the same on every load
-  let s=11;const r=()=>{s=(s*16807)%2147483647;return (s-1)/2147483646};
-  for(let i=0;i<2600;i++){g.fillStyle=`rgba(120,90,50,${.03+r()*.05})`;g.fillRect(r()*RW,r()*RH,1+r()*3,1+r()*3)}
+  if(painted){g.drawImage(image,0,0,RW,RH);g.fillStyle=`rgba(233,220,188,${VEIL})`;g.fillRect(0,0,RW,RH)}
+  else{
+    // paper grain, seeded so it is the same on every load
+    let s=11;const r=()=>{s=(s*16807)%2147483647;return (s-1)/2147483646};
+    for(let i=0;i<2600;i++){g.fillStyle=`rgba(120,90,50,${.03+r()*.05})`;g.fillRect(r()*RW,r()*RH,1+r()*3,1+r()*3)}
+  }
   poly(g,KINGDOM);g.fillStyle='rgba(90,110,70,.12)';g.fill();
   // the four regions: a wash in the province colour; the wide stroke blurs the approximate edges
   g.lineJoin='round';
-  for(const k in REG){poly(g,REG[k]);g.globalAlpha=.16;g.fillStyle=cols[k];g.fill();g.globalAlpha=.3;g.strokeStyle=cols[k];g.lineWidth=14;g.stroke()}
+  for(const k in REG){poly(g,REG[k]);g.globalAlpha=painted?.1:.16;g.fillStyle=cols[k];g.fill();g.globalAlpha=painted?.22:.3;g.strokeStyle=cols[k];g.lineWidth=14;g.stroke()}
   g.globalAlpha=1;
 }
 
@@ -86,6 +91,8 @@ function draw(g,{sel=null,clock=0,units=[],blocks=[],guards=[]}={}){
   const px=1/cam.z;g.lineCap='round';g.lineJoin='round';
   for(const r of RIV)line(g,r.pts,(r.major?2.4:1.5)*px,'#6f93b0');
   line(g,BORDER,2.2*px,'#7a2a20',[8*px,4*px,1.5*px,4*px]);
+  // on a painted ground a pale halo keeps the thin roads readable
+  if(painted)for(const e of ROADS)line(g,e,4*px,'rgba(233,220,188,.55)');
   for(const e of ROADS)line(g,e,1.6*px,'rgba(122,92,48,.8)');
   for(const e of RAILS){line(g,e,3.2*px,'#2a2018');line(g,e,1.4*px,'#efe3c6',[5*px,5*px])}
   for(const gd of guards)line(g,routePath(gd.prov,gd.kind).pts,11*px,`rgba(80,130,220,${.28+Math.sin(clock*4)*.1})`);

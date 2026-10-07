@@ -118,8 +118,10 @@ levelUI();
 /* ---------- background painting ---------- */
 function inFort(x,y,s=1){return Math.hypot((x-F.x)/(F.R*s),(y-F.y)/(F.R*F.sq*s))<1}
 
-const MAP_SRC='assets/map-1918.jpg';
-const mapImg=new Image();
+const MAP_SRC='assets/map-1918.jpg',REGION_SRC='assets/region-1918.jpg';
+const mapImg=new Image(),regionImg=new Image();
+// resolves when the image has loaded or failed; a failed one keeps naturalWidth at 0 and the game goes on without it
+const loadImage=(img,src)=>new Promise(r=>{img.onload=r;img.onerror=r;img.src=src});
 function renderBG(){
   bg.width=Math.round(W*BGS);bg.height=Math.round(H*BGS);
   const g=bg.getContext('2d');g.setTransform(BGS,0,0,BGS,0,0);
@@ -644,8 +646,9 @@ if(window.ResizeObserver)new ResizeObserver(()=>resize()).observe(canvas);else a
 (async()=>{
   resize();
   try{await Promise.race([Promise.all([document.fonts.load('700 14px "Cormorant SC"'),document.fonts.load('500 14px "Alegreya Sans"')]),new Promise(r=>setTimeout(r,1800))])}catch{/* fonts are optional */}
-  R.init({cols:Object.fromEntries(PKEYS.map(k=>[k,PROV[k].col]))});
-  await new Promise(r=>{mapImg.onload=r;mapImg.onerror=r;mapImg.src=MAP_SRC});renderBG();makeSpots();resetCrowdLayer();stamp(60);
+  await Promise.all([loadImage(mapImg,MAP_SRC),loadImage(regionImg,REGION_SRC)]);
+  R.init({cols:Object.fromEntries(PKEYS.map(k=>[k,PROV[k].col])),image:regionImg});
+  renderBG();makeSpots();resetCrowdLayer();stamp(60);
   save.load();soundUI();S=null;requestAnimationFrame(loop);startScreen();
 })();
 })();

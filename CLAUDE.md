@@ -11,7 +11,7 @@ Singura dependență externă sunt fonturile Google (Cormorant SC, Alegreya Sans
 Unelte de dezvoltare (`npm install` o dată):
 - `npm test`: testele `node:test` din `tests/` și `tools/trailer/`.
 - `npm run lint`: ESLint pe `src`, `tools` și `tests`.
-- `npm run build`: generează `dist/drumul-spre-unire.html`, un singur fișier cu CSS-ul, scripturile și harta în base64. Asta e versiunea care se publică ca artifact. Build-ul eșuează peste 16 MB.
+- `npm run build`: generează `dist/drumul-spre-unire.html`, un singur fișier cu CSS-ul, scripturile și cele două hărți (orașul și regiunea) în base64. Asta e versiunea care se publică ca artifact. Build-ul eșuează peste 16 MB.
 
 ## Structură
 - `index.html`: HUD-ul (resurse, ceas, obiectiv, provincii, cele 4 acțiuni), modalul și toast-urile.
@@ -21,14 +21,16 @@ Unelte de dezvoltare (`npm install` o dată):
 - `src/save.js`: progresul salvat în `localStorage` (cheia `dsu.v1`): cel mai bun rezultat, paginile din Cronică, sunetul. Dacă stocarea nu merge (mod privat), ține datele în memorie. Schema și validarea (`parseSave`) sunt în `core.js`.
 - `src/audio.js`: sunetul, sintetizat cu Web Audio (fără fișiere audio): vânt, murmurul mulțimii (crește cu oamenii de pe câmp), fluierul și pufăitul trenurilor, clopotele de la 1 decembrie 06:00 și de la final, semnalele de interfață. Contextul audio pornește la „Începe misiunea”, pentru că browserul cere un gest al utilizatorului. Fără Web Audio (sau dacă pornirea eșuează), butonul de sunet dispare și totul devine no-op. Dacă browserul suspendă contextul (de exemplu iOS după un apel), următoarea apăsare pe un buton îl repornește.
 - `src/cinematic.js`: finalul cinematic de 12 secunde (Sala Unirii → Poarta a IV-a → Câmpul lui Horea → vedere de sus), cu subtitrări pe canvas. Cadrele-cheie sunt multipli de `cam.minZ`, deci rezistă la resize. Pe telefon portret, ultimul cadru păstrează toată mulțimea. Orice atingere sau tastă sare la rezultate. Cu `prefers-reduced-motion`, sare direct la ultimul cadru.
-- `src/region.js`: harta regiunii (`DSU.region`), desenată din `geo.js` pe un fundal de hârtie: provinciile, granița din 1918, râurile, drumurile, căile ferate, orașele și traseele provinciei alese. Are camera ei (de la „toate provinciile” până la 6× apropiere, `MAXK`), iar orașele mici (`tier` 2) apar de la 1,8× (`TIER2`). Hârtia și provinciile sunt pictate o dată pe un canvas separat; liniile și etichetele se desenează la fiecare cadru, ca să rămână clare la zoom. Etichetele respectă opacitatea primită (`globalAlpha`), ca să se estompeze odată cu harta. Atingerea unui oraș sau a unei provincii deschide o fișă (`info`) cu numele oficial din 1918 sau cota de delegați. `home()` revine la vederea cu toate provinciile. Desenează și drumurile în curs, date de `game.js` la fiecare cadru: căruțele și trenurile (`units`, cu `d` = distanța pe traseu), blocajele și semnele evenimentelor (`blocks`) și traseele păzite (`guards`).
+- `src/region.js`: harta regiunii (`DSU.region`), desenată din `geo.js` pe un fundal de hârtie: provinciile, granița din 1918, râurile, drumurile, căile ferate, orașele și traseele provinciei alese. Are camera ei (de la „toate provinciile” până la 6× apropiere, `MAXK`), iar orașele mici (`tier` 2) apar de la 1,8× (`TIER2`). Hârtia și provinciile sunt pictate o dată pe un canvas separat; liniile și etichetele se desenează la fiecare cadru, ca să rămână clare la zoom. Etichetele respectă opacitatea primită (`globalAlpha`), ca să se estompeze odată cu harta. Atingerea unui oraș sau a unei provincii deschide o fișă (`info`) cu numele oficial din 1918 sau cota de delegați. `home()` revine la vederea cu toate provinciile. Desenează și drumurile în curs, date de `game.js` la fiecare cadru: căruțele și trenurile (`units`, cu `d` = distanța pe traseu), blocajele și semnele evenimentelor (`blocks`) și traseele păzite (`guards`). Fundalul pictat (`image`, din `assets/region-1918.jpg`) se desenează sub spălările provinciilor, sub un văl de hârtie (`VEIL`), iar drumurile subțiri primesc un halou deschis doar pe el; dacă imaginea nu se încarcă (`naturalWidth` 0), rămâne hârtia cu granulație.
 - `src/portal.js`: trecerea dintre regiune și oraș (`DSU.portal.create`), ca mașină de stări fără DOM. `u` merge de la 0 (regiunea) la 1 (orașul) în 0,8 s (0,2 s cu reduced motion); un zbor întors la jumătate pornește înapoi de unde a rămas. `overscroll` adună zoom-ul cerut peste limita unei hărți și schimbă nivelul abia după `PUSH` (×1,5); apăsarea se stinge în 0,6 s, deci tremuratul la prag nu schimbă nivelul. `alpha()` dă opacitatea regiunii, iar `pose()` camera regiunii în timpul zborului. `notify(nivel)` ține minte (în `attention`) pe ce nivel s-a întâmplat ceva cât timp jucătorul se uită în altă parte; `go` o șterge.
 - `src/game.js`: restul jocului, într-un IIFE, pe canvas 2D. Citește din `DSU.core`, `DSU.region` și `DSU.portal`, deci se încarcă ultimul (ordinea: `core`, `geo`, `save`, `audio`, `cinematic`, `region`, `portal`, `game`).
-- `tests/`: teste unitare pentru modulele fără DOM (`core`, `geo`, `region`, `portal`, `save`, `audio`, `cinematic`). `region` e testat cu un context 2D fals.
+- `tests/`: teste unitare pentru modulele fără DOM (`core`, `geo`, `region`, `portal`, `save`, `audio`, `cinematic`). `region` e testat cu un context 2D fals. `tests/build.test.js` rulează build-ul și verifică că ambele imagini sunt în fișier.
 - `assets/map-1918.jpg`: harta pictată cu AI (2240×1494), desenată pe lumea jocului de 1600×1067.
+- `assets/region-1918.jpg`: fundalul hărții regiunii, pictat cu GPT Image 2.5, prin Higgsfield (2000×1740, doar teren: relief, păduri, zăpadă), desenat pe lumea regiunii din `geo.js`. Râurile, drumurile, orașele, granița și numele se desenează în cod deasupra.
 - `reference/`: harta originală 2K și schița de layout.
 - `tools/make_layout.py` + `tools/map-prompt.md`: cum a fost generată harta.
-- `tools/build-single.mjs`: build-ul cu un singur fișier (`npm run build`).
+- `tools/make_region_layout.py` + `tools/region-prompt.md`: cum a fost generat fundalul regiunii: schița de teren (`reference/region-layout-sketch.png`), promptul pentru GPT Image 2.5 (Higgsfield), `--overlay` (suprapune râurile, granița, drumurile și orașele din `geo.js` peste imagine, ca să verifici alinierea) și `--finish` (2000×1740, JPEG q80).
+- `tools/build-single.mjs`: build-ul cu un singur fișier (`npm run build`), cu cele două imagini ale hărților (`ASSETS`); eșuează dacă un script nu o folosește pe vreuna.
 - `tools/trailer/`: trailerul social 9:16 generat cu Seedance 2.0 și lipit cu ffmpeg. Vezi `tools/trailer/README.md`.
 
 ## Cum e organizat game.js
@@ -50,6 +52,8 @@ Unelte de dezvoltare (`npm install` o dată):
 ## Dacă se regenerează harta
 AI-ul nu respectă schița la pixel. După ce pui o hartă nouă, refă coordonatele din `P`, `CIT`, `F`, `FIELD`, `TRIBS`, `STATION`, `ch_list` și `LANDMARKS`, măsurându-le pe imaginea redimensionată la 1600 px lățime.
 
+Pentru harta regiunii nu refaci nimic în cod: orașele, râurile și traseele vin din `geo.js`. După o imagine nouă rulezi `--overlay` și verifici la nivel de regiune că munții cad unde trebuie în raport cu râurile, granița și drumurile.
+
 ## Acuratețe istorică: reguli
 - În 1918 **nu existau** Catedrala Încoronării (1921–1922) și obeliscul lui Horea, Cloșca și Crișan (1937). Nu le adăuga.
 - Gara se numea oficial Gyulafehérvár. Calea ferată Arad–Alba Iulia a fost deschisă în 1868.
@@ -65,6 +69,7 @@ AI-ul nu respectă schița la pixel. După ce pui o hartă nouă, refă coordona
 - Liniile de cale ferată din `geo.js` și dacă erau deschise în 1918 (mai ales Dej–Baia Mare, Sibiu–Vințu de Jos, Brașov–Făgăraș–Sibiu, Oradea–Cluj). Deocamdată delegații din Maramureș iau trenul de la Dej.
 - Contururile provinciilor istorice din `geo.js`, care sunt aproximative.
 - Numele oficiale din 1918 ale orașelor (`official` în `geo.js`).
+- Contururile reliefului din `tools/make_region_layout.py` (Apuseni, Carpații, munții Banatului și ai Maramureșului), trase din ochi, aproximativ.
 - Locurile evenimentelor din `EVENT_PLACES` (Munții Apuseni, Teiuș, Deva, drumul dinspre Vințu, Arad) și traseele pe care au mers delegații din Apuseni și din Maramureș.
 
 ## Roadmap propus
