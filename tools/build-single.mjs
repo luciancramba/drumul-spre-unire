@@ -1,4 +1,4 @@
-// Builds dist/drumul-spre-unire.html: one file with the CSS, the scripts and the map inlined.
+// Builds dist/drumul-spre-unire.html: one file with the CSS, the scripts and the two map images inlined.
 // This is the version published as a claude.ai artifact.
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 import {join,dirname} from 'node:path';
@@ -7,26 +7,27 @@ import {fileURLToPath} from 'node:url';
 const root=join(dirname(fileURLToPath(import.meta.url)),'..');
 const OUT=join(root,'dist','drumul-spre-unire.html');
 const LIMIT=16*1024*1024;
-const MAP='assets/map-1918.jpg';
+const ASSETS=['assets/map-1918.jpg','assets/region-1918.jpg'];
 
 const read=p=>readFileSync(join(root,p),'utf8');
 let html=read('index.html');
-let styles=0,scripts=0,maps=0;
+let styles=0,scripts=0;
+const inlined=new Set();
 
 html=html.replace(/<link rel="stylesheet" href="([^"]+)">/g,(_,href)=>{styles++;return `<style>\n${read(href)}</style>`});
 html=html.replace(/<script src="([^"]+)"><\/script>/g,(_,src)=>{
   scripts++;
   let code=read(src);
-  if(code.includes(MAP)){
-    maps++;
-    const uri='data:image/jpeg;base64,'+readFileSync(join(root,MAP)).toString('base64');
-    code=code.split(MAP).join(uri);
+  for(const asset of ASSETS)if(code.includes(asset)){
+    inlined.add(asset);
+    const uri='data:image/jpeg;base64,'+readFileSync(join(root,asset)).toString('base64');
+    code=code.split(asset).join(uri);
   }
   return `<script>\n${code.replace(/<\/script/gi,'<\\/script')}</script>`;
 });
 
-if(!styles||!scripts||!maps){
-  console.error(`build: expected a stylesheet, scripts and the map reference (got ${styles}, ${scripts}, ${maps})`);
+if(!styles||!scripts||inlined.size!==ASSETS.length){
+  console.error(`build: expected a stylesheet, scripts and a reference to every map image (got ${styles}, ${scripts}, ${inlined.size} of ${ASSETS.length} images)`);
   process.exit(1);
 }
 const size=Buffer.byteLength(html);
