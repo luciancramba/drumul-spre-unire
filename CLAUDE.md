@@ -2,7 +2,9 @@
 
 Prototip jucabil pentru telefon și desktop: jucătorul organizează sosirea celor 1.228 de delegați și a mulțimii la Alba Iulia, între 30 noiembrie 1918 ora 06:00 și 1 decembrie ora 10:00 (deschiderea Marii Adunări). Ținta de lansare este 1 Decembrie 2026. Proiect Cramba App Studio, cu legătură naturală cu Hotel Medieval și cu celălalt joc, „Steaua Imperiului / Apărarea Cetății”.
 
-Versiunea publicată ca artifact: https://claude.ai/artifact/PLPbap84scVEk7H2uVxXCQ
+Versiunea publicată ca artifact: https://claude.ai/artifact/DXHFtqxtzTyY2T6CeDq1Tz
+
+Pagina de așteptare cu jocul beta: https://unire.cramba.ro (site Netlify `drumul-spre-unire`; `/` = lista de așteptare cu countdown până pe 1 decembrie 2026, `/joaca/` = jocul beta).
 
 ## Rulare
 Fără build. Deschide `index.html` direct în browser sau rulează `npx serve .` și intră pe http://localhost:3000.
@@ -12,6 +14,7 @@ Unelte de dezvoltare (`npm install` o dată):
 - `npm test`: testele `node:test` din `tests/` și `tools/trailer/`.
 - `npm run lint`: ESLint pe `src`, `tools` și `tests`.
 - `npm run build`: generează `dist/drumul-spre-unire.html`, un singur fișier cu CSS-ul, scripturile și cele două hărți (orașul și regiunea) în base64. Asta e versiunea care se publică ca artifact. Build-ul eșuează peste 16 MB.
+- `npm run build:site`: rulează build-ul de mai sus și apoi `tools/build-site.mjs`, care pune în `dist-site/` pagina de așteptare (`/`) și jocul (`/joaca/`). Asta se publică pe unire.cramba.ro; Netlify rulează aceeași comandă (vezi `netlify.toml`).
 
 ## Structură
 - `index.html`: HUD-ul (resurse, ceas, obiectiv, provincii, cele 4 acțiuni), modalul și toast-urile.
@@ -31,6 +34,8 @@ Unelte de dezvoltare (`npm install` o dată):
 - `tools/make_layout.py` + `tools/map-prompt.md`: cum a fost generată harta.
 - `tools/make_region_layout.py` + `tools/region-prompt.md`: cum a fost generat fundalul regiunii: schița de teren (`reference/region-layout-sketch.png`), promptul pentru GPT Image 2.5 (Higgsfield), `--overlay` (suprapune râurile, granița, drumurile și orașele din `geo.js` peste imagine, ca să verifici alinierea) și `--finish` (2000×1740, JPEG q80).
 - `tools/build-single.mjs`: build-ul cu un singur fișier (`npm run build`), cu cele două imagini ale hărților (`ASSETS`); eșuează dacă un script nu o folosește pe vreuna.
+- `site/`: pagina de așteptare. `index.html` (stilul jocului, mobile-first), `landing.js` (logică pură: countdown, „o persoană / 20 de persoane”, validarea e-mailului și apelurile către Supabase; se testează în `tests/site.test.js`) și `app.js` (DOM: countdown, numărul de oameni reîmprospătat la 10 s, formularul, butonul „Joacă acum · Beta”, care înscrie și apoi deschide `/joaca/`). Țintă: 1 decembrie 2026, 00:00, ora României (`LAUNCH`).
+- `supabase/migrations/`: tabelul `public.dsu_waitlist` din proiectul Supabase „Cramba App Studio”. Are RLS fără policy: pagina publică nu poate citi e-mailurile, doar apelează `dsu_waitlist_join` (înscriere, același răspuns pentru un e-mail deja înscris) și `dsu_waitlist_count`. Consimțământul e obligatoriu; datele se păstrează până la 12 luni după lansare. Rollback în comentariul din migrare.
 - `tools/trailer/`: trailerul social 9:16 generat cu Seedance 2.0 și lipit cu ffmpeg. Vezi `tools/trailer/README.md`.
 
 ## Cum e organizat game.js
