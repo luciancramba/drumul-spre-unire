@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drumul spre Unire · Prezentarea jocului</title>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;500;700;800&family=Cormorant+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#f4ead3;--ink:#2a2018;--soft:#6b5a43;--line:#cdb98c;--card:#fbf5e6;--dark:#1e1913;--blue:#2c4d9c;--gold:#e2b21f;--red:#b3302a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.55 "Alegreya Sans",Georgia,serif}
+.wrap{max-width:860px;margin:0 auto;padding:0 20px 48px}
+header{background:var(--dark);color:#ecdfc2;padding:36px 0 30px;margin-bottom:28px}
+header .wrap{padding-bottom:0}
+.tri{display:flex;height:6px;width:96px;margin-bottom:16px}.tri i{flex:1}.tri i:nth-child(1){background:var(--blue)}.tri i:nth-child(2){background:var(--gold)}.tri i:nth-child(3){background:var(--red)}
+.eyebrow{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:#bfa774}
+h1,h2,h3{font-family:"Cormorant SC",Georgia,serif;font-weight:700;line-height:1.15;margin:0}
+h1{font-size:46px;margin:6px 0 10px;color:#f4ead3}
+header p{margin:0;max-width:640px;color:#d9ccb0;font-size:18px}
+h2{font-size:28px;margin:34px 0 10px;padding-top:6px;border-top:1px solid var(--line)}
+h3{font-size:19px;margin:0 0 4px;color:#4a3a22}
+p{margin:0 0 12px}
+.hero{margin:0 0 26px}
+figure{margin:0}
+figure img{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:6px;box-shadow:0 2px 10px rgba(42,32,24,.18)}
+figcaption{font-size:14.5px;color:var(--soft);margin-top:7px;line-height:1.4}
+figcaption b{color:var(--ink)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:16px 0 8px}
+.grid.three{grid-template-columns:repeat(3,1fr)}
+.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0 6px}
+.fact{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:10px 12px}
+.fact b{display:block;font:700 26px "Cormorant SC",Georgia,serif;color:#7a2a20;line-height:1.1}
+.fact span{font-size:14px;color:var(--soft)}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+.card{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:6px;padding:12px 14px}
+.card p{margin:0;font-size:16px}
+.res{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:12px 0}
+ol.steps{padding:0;margin:12px 0;list-style:none;counter-reset:s}
+ol.steps li{counter-increment:s;display:flex;gap:12px;margin-bottom:10px}
+ol.steps li:before{content:counter(s);flex:none;width:28px;height:28px;border-radius:50%;background:var(--dark);color:#ecdfc2;font-weight:800;text-align:center;line-height:28px}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:16px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--soft)}
+.note{background:var(--card);border:1px dashed var(--line);border-radius:6px;padding:10px 14px;font-size:15px;color:var(--soft);margin-top:18px}
+kbd{font:600 13px ui-monospace,Menlo,monospace;background:#fff;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px}
+.phone{max-width:250px}
+.split{display:grid;grid-template-columns:1fr 250px;gap:22px;align-items:start}
+footer{color:var(--soft);font-size:14px;margin-top:30px;border-top:1px solid var(--line);padding-top:12px}
+@media (max-width:680px){.grid,.grid.three,.cards,.res{grid-template-columns:1fr}.facts{grid-template-columns:1fr 1fr}.split{grid-template-columns:1fr}h1{font-size:36px}}
+@media print{
+  @page{size:A4;margin:14mm}
+  body{font-size:14px;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  header{padding:22px 0 18px;margin-bottom:18px}h1{font-size:38px}
+  h2{margin-top:22px;break-after:avoid}figure,.card,.fact,table{break-inside:avoid}
+  .wrap{max-width:none;padding:0 6px 0}
+  .shadowless img{box-shadow:none}
+  figure img{box-shadow:none}
+}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div class="tri"><i></i><i></i><i></i></div>
+  <div class="eyebrow">Capitolul 6 · Alba Iulia · prototip jucabil · Cramba App Studio</div>
+  <h1>Drumul spre Unire</h1>
+  <p>Un joc de strategie și logistică pe care îl joci în patru minute, pe telefon sau pe calculator. Organizezi sosirea delegaților la Marea Adunare de la Alba Iulia, 30 noiembrie – 1 decembrie 1918.</p>
+</div></header>
+
+<div class="wrap">
+
+<figure class="hero"><img src="img/04-seara.jpg" alt="Harta Alba Iulia în timpul jocului, cu mulțimea adunată pe Câmpul lui Horea">
+<figcaption><b>Joc în desfășurare, sâmbătă seara.</b> Mulțimea crește pe Câmpul lui Horea, la vest de cetate. În stânga jos sunt cele patru provincii, jos sunt cele patru acțiuni.</figcaption></figure>
+
+<div class="facts">
+  <div class="fact"><b>1.228</b><span>delegați de adus la timp</span></div>
+  <div class="fact"><b>~4 min</b><span>o partidă completă</span></div>
+  <div class="fact"><b>28 h</b><span>de timp istoric (06:00 → 10:00)</span></div>
+  <div class="fact"><b>4</b><span>provincii, 4 acțiuni</span></div>
+</div>
+
+<h2>Ce este jocul</h2>
+<p>E <b>sâmbătă, 30 noiembrie 1918, ora 06:00</b>. Mâine la ora 10 se deschide Marea Adunare Națională. Tu ești cel care face ca ea să aibă loc cu sala plină: trimiți delegații din Maramureș, Crișana, Banat și Transilvania, organizezi trenuri speciale, deblochezi drumurile acoperite de zăpadă și ții moralul oamenilor sus. La final vezi cum urcă mulțimea pe Câmpul lui Horea și ce s-a întâmplat de fapt în 1918.</p>
+<p>Jocul e <b>educațional</b>: harta, orașele, porțile cetății și evenimentele sunt cele din 1918, iar fiecare alegere deblochează câte o pagină din <b>Cronica Unirii</b>. Țintă de lansare: <b>1 Decembrie 2026</b>.</p>
+
+<h2>Cu ce seamănă</h2>
+<div class="cards">
+  <div class="card"><h3>Gestiune de resurse în timp real</h3><p>Ca într-un RTS ușor: ai trei resurse, un ceas care merge și trebuie să decizi repede unde le cheltui. Nu construiești și nu lupți, doar organizezi mișcarea oamenilor.</p></div>
+  <div class="card"><h3>Jocurile de trasee și logistică</h3><p>Mini Metro e comparația cea mai apropiată: urmărești cum curg coloanele pe drumuri și pe calea ferată și intervii când se înfundă ceva.</p></div>
+  <div class="card"><h3>Cărțile de decizie</h3><p>Evenimentele vin ca telegrame cu două sau trei alegeri, fiecare cu un cost, ca în Reigns sau Frostpunk. Nu există răspuns perfect, doar compromisuri.</p></div>
+  <div class="card"><h3>Jocurile istorice educaționale</h3><p>Aproape de Valiant Hearts sau Through the Darkest of Times prin ton: istoria nu e o poveste de fundal, ci tema jocului. Diferența: aici nu e război, e diplomație și organizare.</p></div>
+</div>
+
+<h2>Obiectivul</h2>
+<p>Aduci <b>cât mai mulți din cei 1.228 de delegați</b> până când ceasul ajunge la <b>1 decembrie, ora 10:00</b>. Pe lângă ei vin și zeci de mii de oameni, care se strâng pe Câmpul lui Horea și apar în scorul final. Rezultatul se măsoară în stele:</p>
+<table>
+<tr><th>Delegați aduși</th><th>Rezultat</th></tr>
+<tr><td>Toți cei 1.228</td><td>★★★ „Sala Unirii e plină.”</td></tr>
+<tr><td>900 sau mai mulți</td><td>★★☆ „Câțiva încă sunt pe drum.”</td></tr>
+<tr><td>Sub 900</td><td>★☆☆ „Prea mulți au rămas pe drum.”</td></tr>
+</table>
+<p>Cota fiecărei provincii: Maramureș 140, Crișana 260, Banat 300, Transilvania 528.</p>
+
+<h2>Cum se joacă</h2>
+<div class="split"><div>
+<ol class="steps">
+  <li><div><b>Alegi o provincie</b> din lista din stânga jos. Fiecare are drumul ei și o linie de cale ferată (Banat și Transilvania vin dinspre sud, pe linia Vințu, Maramureș și Crișana dinspre nord, pe linia Teiuș).</div></li>
+  <li><div><b>Trimiți delegați</b> cu căruțele (12 Influență, 30 de delegați) sau <b>organizezi un tren special</b> (45 Provizii, până la 120 de delegați și mii de oameni, dar o singură dată pe linie, până ajunge).</div></li>
+  <li><div>Când un traseu se blochează, <b>negociezi</b> (20 Influență). Ca să previi blocajele, <b>protejezi traseul</b> cu Gărzile Naționale (25 Provizii, 45 s, coloanele merg mai repede).</div></li>
+  <li><div>Răspunzi la <b>telegramele</b> care apar la 15–25 de secunde: viscol, locomotivă fără cărbune, zvon fals, cazare. Jocul se oprește cât citești.</div></li>
+  <li><div>Poți trage de hartă, apropia cu două degete și atinge etichetele cu <b>i</b> ca să afli ce era fiecare clădire în 1918.</div></li>
+</ol>
+<p style="font-size:15px;color:var(--soft)">Pe calculator: <kbd>1</kbd>–<kbd>4</kbd> alege provincia, <kbd>D</kbd> delegați, <kbd>T</kbd> tren, <kbd>P</kbd> protejează, <kbd>N</kbd> negociază. Butonul ×2 dublează viteza.</p>
+</div>
+<figure class="phone"><img src="img/12-telefon.jpg" alt="Jocul pe telefon, format portret"><figcaption><b>Pe telefon.</b> Interfața trece pe portret: acțiunile se așază 2×2, iar provinciile se derulează lateral.</figcaption></figure>
+</div>
+
+<h3 style="margin-top:20px">Cele trei resurse</h3>
+<div class="res">
+  <div class="card"><h3>Provizii</h3><p>Hrană, cărbune, căruțe. Plătesc trenurile și paza.</p></div>
+  <div class="card"><h3>Influență</h3><p>Autoritatea Consiliului Național. Plătește delegațiile și negocierile.</p></div>
+  <div class="card"><h3>Moral</h3><p>Entuziasmul oamenilor. Scade încet, se reface prin sosiri și alegeri bune. Un moral mare grăbește coloanele și umple mai repede resursele.</p></div>
+</div>
+
+<h2>O partidă, în imagini</h2>
+<div class="grid">
+  <figure><img src="img/01-start.jpg" alt="Ecranul de început"><figcaption><b>1. Începutul.</b> Ecranul de start explică misiunea și cele patru reguli în câteva rânduri.</figcaption></figure>
+  <figure><img src="img/02-inceput.jpg" alt="Harta la începutul misiunii, sâmbătă 06:13"><figcaption><b>2. Sâmbătă, 06:13.</b> Cetatea Alba Carolina, porțile și orașul de jos. Primele 1.500 de oameni sunt deja pe câmp.</figcaption></figure>
+  <figure><img src="img/03-eveniment.jpg" alt="Card-telegramă cu un eveniment"><figcaption><b>3. O telegramă.</b> „Un zvon fals”: plătești curieri sau ignori zvonul și pierzi moral. Fiecare alegere își arată costul.</figcaption></figure>
+  <figure><img src="img/07-cronica.jpg" alt="Cronica Unirii"><figcaption><b>4. Cronica Unirii.</b> Paginile se deblochează după oră sau după acțiuni și rămân salvate între partide.</figcaption></figure>
+  <figure><img src="img/06-dimineata.jpg" alt="Duminică dimineața, mulțimea mare pe Câmpul lui Horea"><figcaption><b>5. Duminică, 07:09.</b> Trei provincii sunt complete. Mulțimea de 105.000 de oameni a umplut câmpul.</figcaption></figure>
+  <figure><img src="img/09-final-b.jpg" alt="Finalul cinematic deasupra Câmpului lui Horea"><figcaption><b>6. Finalul cinematic.</b> La 10:00 camera trece de la Sala Unirii la Poarta a IV-a și apoi deasupra mulțimii (12 secunde, se poate sări).</figcaption></figure>
+</div>
+<figure style="max-width:620px;margin:6px auto 0"><img src="img/11-rezultat.jpg" alt="Cardul cu rezultatul final"><figcaption><b>7. Rezultatul.</b> Ce s-a întâmplat de fapt la Adunare (cine a deschis-o, cine a citit rezoluția), stelele câștigate, delegații aduși și mulțimea adunată.</figcaption></figure>
+
+<h2>Sfaturi pentru prima partidă</h2>
+<ul>
+  <li>Trenurile aduc cei mai mulți oameni, deci pornește unul pe fiecare linie cât mai devreme și apoi din nou, imediat ce ajunge.</li>
+  <li>Influența se termină repede dacă trimiți căruțe la întâmplare. Păstrează 20 pentru o negociere când se blochează un traseu.</li>
+  <li>La un blocaj, uită-te la etichetă (viscol, pod aglomerat, fără cărbune): uneori e mai ieftin să alegi varianta care te lasă să aștepți, alteori nu.</li>
+  <li>Nu lăsa moralul să scadă: un moral mare accelerează și resursele, și coloanele.</li>
+</ul>
+
+<div class="note"><b>Stadiul:</b> prototip jucabil, doar în română, cu sunet sintetizat (vânt, mulțime, trenuri, clopote). Capturile din acest document au venit dintr-o partidă jucată automat, de aceea rezultatul e de două stele și nu de trei. Textele din Cronică și poziția clădirilor din cetate urmează să fie verificate cu un istoric înainte de a ajunge în școli.</div>
+
+<footer>Cramba App Studio · Roadmap: 1) MVP 1 Decembrie 2026, 2) modul pentru profesori (aceeași misiune pentru toată clasa și un quiz din Cronică), 3) sezonul 2 (capitolele 1–5, 1916–1918).</footer>
+</div>
+</body>
+</html>
