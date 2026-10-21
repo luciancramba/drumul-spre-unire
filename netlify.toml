@@ -1,0 +1,5 @@
+# unire.cramba.ro: the waiting-list page at / and the beta game at /joaca/.
+# Netlify builds both (build:site runs the single-file game build first) and serves the dist-site folder.
+[build]
+  command = "npm run build:site"
+  publish = "dist-site"
