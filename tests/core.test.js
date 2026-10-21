@@ -1,7 +1,7 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const core=require('../src/core.js');
-const {mkPath,at,clamp,fmt,clockParts,clockText,scoreFor,QUOTAS,TOTAL,DEADLINE,RATE}=core;
+const {mkPath,at,clamp,fmt,clockParts,clockText,scoreFor,QUOTAS,TOTAL,DEADLINE,RATE,BALANCE}=core;
 
 test('quotas add up to the 1.228 accredited delegates',()=>{
   assert.equal(Object.values(QUOTAS).reduce((a,b)=>a+b,0),TOTAL);
@@ -10,6 +10,17 @@ test('quotas add up to the 1.228 accredited delegates',()=>{
 
 test('the game lasts about four real minutes',()=>{
   assert.equal(DEADLINE/RATE,240);
+});
+
+test('the opening stock pays for two trains at once',()=>{
+  assert.ok(BALANCE.start.prov>=90);
+});
+
+test('provisions alone cannot cover all-train delivery with a lazy plan',()=>{
+  // 10 full trains cost 450 Provizii; at best moral the game generates start + regen over its length
+  const best=BALANCE.start.prov+BALANCE.regen.prov*(.55+100/150)*DEADLINE/RATE;
+  assert.ok(best>=450,'a perfect run must still be possible');
+  assert.ok(best<BALANCE.start.prov+2.1*(.55+100/150)*DEADLINE/RATE,'tighter than the original economy');
 });
 
 test('clamp and fmt',()=>{

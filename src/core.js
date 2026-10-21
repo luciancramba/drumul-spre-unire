@@ -6,6 +6,9 @@ const DEADLINE=1680; // 1 Dec 10:00 measured from 30 Nov 06:00
 const QUOTAS={MM:140,CR:260,BN:300,TR:528};
 const TOTAL=1228;
 
+// economy: start stock and base regeneration per real second, multiplied by .55 + moral/150
+const BALANCE={start:{prov:120,infl:60,moral:70},regen:{prov:1.45,infl:.75}};
+
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const fmt=n=>Math.round(n).toLocaleString('ro-RO');
 
@@ -40,7 +43,7 @@ function parseSave(raw){
 // a run beats the best one with more delegates, or the same delegates and a bigger crowd
 function isBetter(run,best){return !best||run.delegates>best.delegates||(run.delegates===best.delegates&&run.crowd>best.crowd)}
 
-const core={W,H,RATE,DEADLINE,QUOTAS,TOTAL,clamp,fmt,mkPath,at,clockParts,clockText,scoreFor,emptySave,parseSave,isBetter};
+const core={W,H,RATE,DEADLINE,QUOTAS,TOTAL,BALANCE,clamp,fmt,mkPath,at,clockParts,clockText,scoreFor,emptySave,parseSave,isBetter};
 const DSU=root.DSU||(root.DSU={});
 DSU.core=core;
 if(typeof module!=='undefined'&&module.exports)module.exports=core;
