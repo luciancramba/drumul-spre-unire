@@ -5,8 +5,9 @@
   "description": "Joc educațional RTS: drumul delegaților spre Marea Adunare de la Alba Iulia, 1918",
   "scripts": {
     "test": "node --test tests/ tools/trailer/",
-    "lint": "eslint src tools tests",
-    "build": "node tools/build-single.mjs"
+    "lint": "eslint src site tools tests",
+    "build": "node tools/build-single.mjs",
+    "build:site": "node tools/build-single.mjs && node tools/build-site.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Drumul spre Unire · Lansare 1 Decembrie 2026</title>
+<meta name="description" content="Joc educațional despre drumul delegaților spre Marea Adunare Națională de la Alba Iulia, 1918. Lansare pe 1 Decembrie 2026. Înscrie-te pe lista de așteptare sau joacă acum versiunea beta.">
+<meta name="theme-color" content="#16120d">
+<meta property="og:title" content="Drumul spre Unire">
+<meta property="og:description" content="Organizează sosirea celor 1.228 de delegați la Alba Iulia, 1918. Lansare: 1 Decembrie 2026. Joacă acum versiunea beta.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;500;700;800&family=Cormorant+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme:dark;
+  --ink:#16120d;
+  --panel:rgba(24,19,13,.86);
+  --line:#5e4b2b;
+  --brass:#c9a04e;
+  --brass-hi:#ecd08a;
+  --parch:#ecdfc2;
+  --parch-ink:#2a2018;
+  --muted:#b7a687;
+  --blue:#2c4d9c;
+  --yellow:#e2b21f;
+  --red:#b3302a;
+  --ok:#7fb069;
+  --bad:#e0766b;
+  --display:"Cormorant SC","Cormorant Garamond",Georgia,"Times New Roman",serif;
+  --body:"Alegreya Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh;min-height:100dvh;background:var(--ink);color:var(--parch);font-family:var(--body);font-size:17px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(22,18,13,.55),rgba(22,18,13,.92) 70%),url(region.jpg) center/cover no-repeat}
+a{color:var(--brass-hi)}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brass-hi);outline-offset:2px}
+
+.wrap{max-width:560px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 28px) 16px calc(env(safe-area-inset-bottom,0px) + 32px);display:flex;flex-direction:column;gap:22px}
+.tricolor{width:44px;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--blue) 0 33.3%,var(--yellow) 33.3% 66.6%,var(--red) 66.6%)}
+.eyebrow{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:500}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(40px,12vw,64px);line-height:.98;margin:6px 0 10px;color:var(--brass-hi);text-wrap:balance}
+.lead{margin:0;color:var(--parch);max-width:46ch;text-wrap:pretty}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;box-shadow:0 0 0 1px rgba(0,0,0,.5),inset 0 0 0 1px rgba(236,208,138,.06),0 10px 30px rgba(0,0,0,.4);backdrop-filter:blur(3px)}
+.panel h2{font-family:var(--display);font-weight:700;font-size:24px;line-height:1.1;margin:0 0 4px;color:var(--parch)}
+.panel p{margin:0 0 12px;color:var(--muted);font-size:15.5px}
+
+.count{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.count div{text-align:center;background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:6px;padding:10px 4px 8px}
+.count b{display:block;font-family:var(--display);font-size:clamp(30px,9vw,44px);line-height:1;color:var(--brass-hi);font-variant-numeric:tabular-nums}
+.count span{font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.launched{font-family:var(--display);font-size:26px;color:var(--brass-hi);margin:10px 0 0}
+
+.waiting{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:15.5px;color:var(--parch)}
+.waiting .dot{width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 rgba(127,176,105,.6);animation:pulse 2s infinite;flex:none}
+.waiting b{font-weight:800;color:var(--brass-hi);font-variant-numeric:tabular-nums}
+@keyframes pulse{70%{box-shadow:0 0 0 8px rgba(127,176,105,0)}100%{box-shadow:0 0 0 0 rgba(127,176,105,0)}}
+
+form{display:grid;gap:12px}
+label.field{display:grid;gap:6px;font-weight:700;font-size:14px;letter-spacing:.02em}
+input[type=email]{width:100%;min-height:48px;padding:10px 14px;border-radius:6px;border:1px solid var(--line);background:rgba(0,0,0,.35);color:var(--parch);font-size:17px}
+input[type=email]::placeholder{color:#8d7f66}
+input[type=email][aria-invalid=true]{border-color:var(--bad)}
+.consent{display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:start;font-size:14.5px;color:var(--muted);line-height:1.4}
+.consent input{width:22px;height:22px;margin:1px 0 0;accent-color:var(--brass)}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.actions{display:grid;gap:10px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:50px;padding:12px 18px;border-radius:6px;font-weight:800;font-size:16.5px;cursor:pointer;text-decoration:none;text-align:center;border:0}
+.btn.primary{background:linear-gradient(180deg,#e0bd6a,#b88f3d);color:#2a1d0a;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 0 #6b5328}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.secondary{background:transparent;color:var(--parch);box-shadow:inset 0 0 0 1px var(--brass)}
+.btn.secondary:hover{background:rgba(236,208,138,.1)}
+.btn[disabled]{opacity:.6;cursor:progress}
+.badge{font-size:11px;letter-spacing:.1em;text-transform:uppercase;background:rgba(42,29,10,.18);padding:2px 7px;border-radius:3px}
+.msg{min-height:1.4em;margin:0;font-size:15px}
+.msg.err{color:var(--bad)}
+.msg.ok{color:var(--ok)}
+.note{font-size:13.5px;color:var(--muted);margin:0}
+.joined{display:grid;gap:12px}
+.joined p{margin:0;color:var(--parch)}
+
+details{font-size:14.5px;color:var(--muted)}
+summary{cursor:pointer;color:var(--parch);font-weight:700}
+details p{margin:8px 0 0;font-size:14.5px}
+footer{font-size:13.5px;color:var(--muted);text-align:center;margin-top:4px}
+
+@media (min-width:600px){
+  .wrap{padding-top:56px}
+  .actions{grid-template-columns:1fr 1fr}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <div class="tricolor" aria-hidden="true"></div>
+    <div class="eyebrow" style="margin-top:14px">Joc educațional · Alba Iulia, 1918</div>
+    <h1>Drumul spre Unire</h1>
+    <p class="lead">Organizează sosirea celor 1.228 de delegați și a mulțimii la Marea Adunare Națională, între 30 noiembrie, ora 06:00, și 1 decembrie, ora 10:00. Se joacă pe telefon și pe calculator, în aproximativ 4 minute.</p>
+  </header>
+
+  <section class="panel" aria-labelledby="t-launch">
+    <h2 id="t-launch">Lansare pe 1 Decembrie 2026</h2>
+    <div id="countdown" role="timer" aria-live="off" aria-label="Timp rămas până la lansare">
+      <div class="count">
+        <div><b id="cd-d">–</b><span>zile</span></div>
+        <div><b id="cd-h">–</b><span>ore</span></div>
+        <div><b id="cd-m">–</b><span>minute</span></div>
+        <div><b id="cd-s">–</b><span>secunde</span></div>
+      </div>
+    </div>
+    <p id="launched" class="launched" hidden>E ziua cea mare. Jocul se lansează acum.</p>
+    <div class="waiting"><span class="dot" aria-hidden="true"></span><span id="waiting" aria-live="polite">Se încarcă lista de așteptare…</span></div>
+  </section>
+
+  <section class="panel" aria-labelledby="t-join">
+    <div id="joinBox">
+      <h2 id="t-join">Fii printre primii care joacă</h2>
+      <p>Lasă-ți adresa de e-mail și te anunțăm în ziua lansării. Dacă vrei să încerci jocul chiar acum, versiunea beta e deschisă: ne ajută cu părerea ta.</p>
+      <form id="joinForm" novalidate>
+        <label class="field" for="email">Adresa ta de e-mail
+          <input id="email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="nume@exemplu.ro" required maxlength="254">
+        </label>
+        <div class="hp" aria-hidden="true"><label>Nu completa acest câmp <input id="website" name="website" type="text" tabindex="-1" autocomplete="off"></label></div>
+        <label class="consent" for="consent">
+          <input id="consent" name="consent" type="checkbox" required>
+          <span>Sunt de acord ca adresa mea de e-mail să fie păstrată de Cramba App Studio și folosită doar ca să fiu anunțat(ă) despre lansarea jocului.</span>
+        </label>
+        <div class="actions">
+          <button class="btn primary" type="submit" id="btnBeta" data-mode="beta">Joacă acum <span class="badge">Beta</span></button>
+          <button class="btn secondary" type="submit" id="btnNotify" data-mode="notify">Anunță-mă la lansare</button>
+        </div>
+        <p class="msg" id="msg" role="status" aria-live="polite"></p>
+      </form>
+      <details>
+        <summary>Ce facem cu adresa ta</summary>
+        <p>Operatorul datelor este Cramba App Studio. Folosim adresa ta doar ca să-ți trimitem un mesaj despre lansarea jocului „Drumul spre Unire” și, cel mult, despre jocul următor al seriei. O păstrăm până la 12 luni după lansare. Nu o dăm altcuiva și nu e vizibilă pe această pagină: se afișează doar câte persoane sunt pe listă. Poți cere oricând ștergerea ei, scriindu-ne prin <a href="https://cramba.ro" rel="noopener">cramba.ro</a>.</p>
+      </details>
+    </div>
+    <div id="joinedBox" class="joined" hidden>
+      <h2>Ești pe listă. Mulțumim!</h2>
+      <p>Te anunțăm pe e-mail în ziua lansării. Până atunci, poți juca versiunea beta și ne poți spune ce ai simțit.</p>
+      <a class="btn primary" id="playLink" href="joaca/">Joacă acum <span class="badge">Beta</span></a>
+    </div>
+  </section>
+
+  <footer>Un proiect <b>Cramba App Studio</b> · Versiunea beta e în lucru, iar părerea ta ne ajută.</footer>
+</main>
+<script src="landing.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
